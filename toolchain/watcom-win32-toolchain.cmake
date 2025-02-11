@@ -1,0 +1,8 @@
+#set(TOOLCHAIN_NAME "watcom-win32" CACHE STRING "Toolchain name")
+
+set(CMAKE_SYSTEM_NAME "Windows")
+set(CMAKE_SYSTEM_PROCESSOR "X86")
+set(CMAKE_C_COMPILER "wcl386")
+set(CMAKE_CXX_COMPILER "wcl386")
+
+set(CMAKE_WATCOM_RUNTIME_LIBRARY "MultiThreaded")
