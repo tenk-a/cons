@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 # cmake:プロジェクト.
-project(hello C)
+project(otige C)
 
 # ソース・ディレクトリのパス.
 set(SRC_DIR "${CMAKE_SOURCE_DIR}/src")
@@ -10,7 +10,8 @@ set(THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/thirdparty")
 
 # ソース・ファイル.
 set(SRCS
-  ${SRC_DIR}/hello.c
+  ${SRC_DIR}/otige.c
+  ${SRC_DIR}/cons.h
 )
 # include ディレクトリ.
 set(INC_DIRS

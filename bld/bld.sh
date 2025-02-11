@@ -21,7 +21,7 @@ mkdir -p ${curdir}/bld/${Toolchain}
 
 if [ "${Toolchain}" == "mac" ]; then
   # cmake -DCMAKE_TOOLCHAIN_FILE=toolchain/${Toolchain}-toolchain.cmake -B bld/${Toolchain}  .
-  cmake -G "Xcode" -B bld/${Toolchain} .
+  cmake -G "Xcode" -DTOOLCHAIN_NAME=mac -DTOOLCHAIN_TARGET_PLATFORM=mac -B bld/${Toolchain} .
   cmake --build bld/${Toolchain} --config Release
 else
   cmake -DCMAKE_TOOLCHAIN_FILE=toolchain/${Toolchain}-toolchain.cmake -DCMAKE_BUILD_TYPE=Release -B bld/${Toolchain}  .
