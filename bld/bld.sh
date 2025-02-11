@@ -19,12 +19,19 @@ curdir=$(pwd)
 mkdir -p ${curdir}/bld
 mkdir -p ${curdir}/bld/${Toolchain}
 
-if [ "${Toolchain}" == "mac" ]; then
-  # cmake -DCMAKE_TOOLCHAIN_FILE=toolchain/${Toolchain}-toolchain.cmake -B bld/${Toolchain}  .
-  cmake -G "Xcode" -DTOOLCHAIN_NAME=mac -DTOOLCHAIN_TARGET_PLATFORM=mac -B bld/${Toolchain} .
-  cmake --build bld/${Toolchain} --config Release
-else
-  cmake -DCMAKE_TOOLCHAIN_FILE=toolchain/${Toolchain}-toolchain.cmake -DCMAKE_BUILD_TYPE=Release -B bld/${Toolchain}  .
-  cmake --build bld/${Toolchain}
-fi
+case ${Toolchain} in
+  mac*)
+    #cmake -DCMAKE_TOOLCHAIN_FILE=toolchain/${Toolchain}-toolchain.cmake -B bld/${Toolchain}  .
+    cmake -G "Xcode" --debug-output -B bld/${Toolchain} .
+    cmake --build bld/${Toolchain} --config Release
+    ;;
+  ia16-*)
+    cmake -DCMAKE_TOOLCHAIN_FILE=toolchain/${Toolchain}-toolchain.cmake -DCMAKE_BUILD_TYPE=Release -B bld/${Toolchain}  .
+    ;;
+  *)
+    cmake -DCMAKE_TOOLCHAIN_FILE=toolchain/${Toolchain}-toolchain.cmake -DCMAKE_BUILD_TYPE=Release -B bld/${Toolchain}  .
+    cmake --build bld/${Toolchain}
+    ;;
+esac
+
 cmake --install bld/${Toolchain} --prefix ${curdir}/bin/${Toolchain}

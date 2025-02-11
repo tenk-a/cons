@@ -18,14 +18,14 @@
 @if /I "%1"=="MSYS32"   goto BLD_MSYS32
 @if /I "%1"=="WATCOM"   goto BLD_WATCOM
 @if /I "%1"=="DJGPP"    goto BLD_DJGPP
-@if /I "%1"=="BORLAND"  goto BLD_BORLAND
-@if /I "%1"=="VC90_WIN32" goto BLD_VC90_WIN32
+rem @if /I "%1"=="BORLAND"  goto BLD_BORLAND
+rem @if /I "%1"=="VC90_WIN32" goto BLD_VC90_WIN32
 @if not "%1"=="" goto ERR
 
 :: all build.
-chcp 932
-cmd /c all_bld.bat BORLAND
-cmd /c all_bld.bat VC90_WIN32
+rem chcp 932
+rem cmd /c all_bld.bat BORLAND
+rem cmd /c all_bld.bat VC90_WIN32
 chcp 65001
 cmd /c all_bld.bat WATCOM
 cmd /c all_bld.bat MSYS64
@@ -74,6 +74,10 @@ call setcc.bat watcom
 call bld.bat watcom-win32
 call bld.bat watcom-dos32
 call bld.bat watcom-dos16-s
+call bld.bat watcom-pcat-dos32
+call bld.bat watcom-pcat-dos16-s
+call bld.bat watcom-pc98-dos16-s
+call bld.bat watcom-pc98-dos32
 goto END
 
 :BLD_MSYS64

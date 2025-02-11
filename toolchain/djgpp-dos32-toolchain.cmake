@@ -5,8 +5,8 @@ set(CMAKE_SYSTEM_PROCESSOR x86)
 set(CMAKE_C_COMPILER i586-pc-msdosdjgpp-gcc)
 set(CMAKE_CXX_COMPILER i586-pc-msdosdjgpp-g++)
 
-set(CMAKE_C_FLAGS "-D__FLAT__")
-set(CMAKE_CXX_FLAGS "-D__FLAT__")
+set(CMAKE_C_FLAGS "-D__FLAT__ -D__DOS__")
+set(CMAKE_CXX_FLAGS "-D__FLAT__ -D__DOS__")
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")

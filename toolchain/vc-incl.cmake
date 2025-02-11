@@ -48,5 +48,17 @@ if(TOOLCHAIN_MSVC_VERSION VERSION_GREATER_EQUAL "19.14.26428.1")
   add_compile_options(/Zc:__cplusplus)
 endif()
 
+if(TOOLCHAIN_MSVC_VERSION VERSION_LESS "19.0")
+    add_compile_options(
+        -Dsnprintf=_snprintf
+        -Dinline=_inline
+    )
+else()
+  add_compile_options(-DCONS_USE_UNICODE)
+endif()
+
 # win32 libraries.
 set(TOOLCHAIN_ADD_LIBS "kernel32;user32;shell32;advapi32" CACHE STRING "Default Windows libraries")
+
+# Use Windows UTF-8 API (windows10 1903 or later)
+set(TOOLCHAIN_ADD_SRCS "${CMAKE_CURRENT_LIST_DIR}/../src/win/ActiveCodePageUTF8.manifest")
