@@ -3,8 +3,9 @@
  *  @brief  落ちゲー始祖の変種.
  *  @author tenk* ( https://github.com/tenk-a )
  *  @date   2024-12
+ *  @license Boost Software License - Version 1.0
  *  @note
- *      ncurses,pdcurses 使用のお試しプログラム.
+ *   pdcurses/ncurses、pc-at dos, pc98 dos 用.
  */
 
 #include "cons/cons.h"
@@ -26,9 +27,6 @@ typedef unsigned char   bool;
 #if defined(CONS_CURSES)
 #define USE_SELECT_PIECE
 #endif
-
-//#define USE_UNICODE
-
 //#define MOTO_GAME
 
 //  -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -
@@ -40,7 +38,7 @@ typedef cons_pos_t      pos_t;
 #define FIELD_W         10
 #define FIELD_H         20
 
-#if defined(__PCAT__)
+#if 0 //defined(__PCAT__)
 #define CONSINIT_FLAGS  1
 #else
 #define CONSINIT_FLAGS  0
@@ -194,7 +192,7 @@ static uint8_t filed_clearLines() {
     return lines;
 }
 
-#else
+#else   // MOTO_GAME
 
 /// 元ゲー:ライン消去.
 /// @return 消去したライン数.
@@ -227,7 +225,6 @@ static uint8_t filed_clearLinesMoto(void) {
 //  GAME
 
 #define GAME_MIN_SPEED   CONS_MSEC_TO_CLOCK(50)  ///< 最小速度(ミリ秒)
-#define GAME_LAND_TIME   CONS_MSEC_TO_CLOCK(500) ///< 最小速度(ミリ秒)
 
 typedef enum GameState {
     GAME_EXIT   = 0,
@@ -249,6 +246,7 @@ static uint_t   s_score       = 0;          ///< スコア.
 static uint_t   s_high_score  = 0;          ///< ハイスコア.
 static uint_t   s_speed       = 0;          ///< 落下速度.
 static uint8_t  s_step        = 0;          ///< そのステートでのstep.
+static uint8_t  s_choise      = 0;          ///< 選択子番号.
 
 typedef enum DrawFlag {
     DRAWF_FIELD = 0x01,
@@ -276,6 +274,23 @@ static void     draw_gameUpdate(void);
 #if defined(USE_SELECT_PIECE)
 static void     select_piece_init(int piece_stype);
 #endif
+
+enum { key_up=1, key_down, key_left, key_right, key_1, key_2, key_cancel };
+
+/// キー入力.
+///
+static uint8_t getKey(void) {
+    switch (cons_key()) {
+    case CONS_KEY_UP:    case 'w': case 'W': return key_up;
+    case CONS_KEY_DOWN:  case 's': case 'S': return key_down;
+    case CONS_KEY_LEFT:  case 'a': case 'A': return key_left;
+    case CONS_KEY_RIGHT: case 'd': case 'D': return key_right;
+    case CONS_KEY_SPACE: case 'z': case 'Z': return key_1;
+    case CONS_KEY_RETURN:case 'x': case 'X': return key_2;
+    case CONS_KEY_ESC:   case 'c': case 'C': return key_cancel;
+    default: return 0;
+    }
+}
 
 /// ゲーム・メインループ.
 /// @return osへ返す値. 0:正常終了. 1:エラー終了.
@@ -317,8 +332,10 @@ static bool gameUpdate(void) {
         break;
     case GAME_OVER:
         rc = gameOver();
-        if (rc != 1)
-            s_next_state = (rc) ? GAME_START : GAME_EXIT;
+        s_next_state = (rc == 0) ? GAME_EXIT
+                     : (rc == 1) ? GAME_OVER
+                     : (rc == 2) ? GAME_START
+                     :             GAME_TITLE;
         break;
     default: //case GAME_EXIT:
         return 0;
@@ -331,8 +348,13 @@ static bool gameUpdate(void) {
 static bool gameTitle(void) {
     cons_key_t   k        = cons_key();
     cons_clock_t cur_time = cons_clock();
+    if (s_step < 255) {
+        if (s_step < 6)
+            k = CONS_KEY_ERR;
+        ++s_step;
+    }
     if (s_fall_time <= cur_time) { // 時間でピース変更.
-        s_fall_time = s_fall_time + 12*GAME_MIN_SPEED;
+        s_fall_time = cur_time + 12*GAME_MIN_SPEED;
         if (++s_piece_cur.shape > 6) {
             s_piece_cur.shape = 0;
             s_piece_cur.r     = (s_piece_cur.r + 1) & 3;
@@ -380,7 +402,7 @@ static bool gamePlay(void) {
     bool         clear_rq = 0;
  #endif
     cons_clock_t cur_time = cons_clock();
-    cons_key_t   k        = cons_key();
+    uint8_t      k        = getKey();
 
     s_draw_flags = 0; //DRAWF_FIELD;
 
@@ -389,30 +411,18 @@ static bool gamePlay(void) {
     }
 
     // 入力処理.
-    if (k != CONS_KEY_ERR) {
-        Piece       cur = s_piece_cur;
+    if (k) {
+        Piece  cur = s_piece_cur;
         switch (k) {
-        case CONS_KEY_LEFT: case 'a': case 'A':
-            --cur.x;
-            break;
-        case CONS_KEY_RIGHT: case 'd': case 'D':
-            ++cur.x;
-            break;
-        case CONS_KEY_DOWN: case 's': case 'S':
-            ++cur.y;
-            break;
-        case ' ': case 'z': case 'Z':
-            cur.r = (cur.r + 1) & 3;
-            break;
+        case key_left : --cur.x; break;
+        case key_right: ++cur.x; break;
+        case key_down : ++cur.y; break;
+        case key_1    : cur.r = (cur.r + 1) & 3; break;
       #if !defined(MOTO_GAME)
-        case CONS_KEY_RETURN: case 'x': case 'X':
-            clear_rq = 1;
-            break;
+        case key_2    : clear_rq = 1; break;
       #endif
-        case CONS_KEY_ESC: case 'c': case 'C':
-            return 0; // 強制終了.
-        default:
-            break;
+        case key_cancel: return 0; // 強制終了.
+        default: break;
         }
         if (field_canPlacePiece(&cur))
             s_piece_cur = cur;
@@ -437,11 +447,6 @@ static bool gamePlay(void) {
         ++cur.y;
         if (field_canPlacePiece(&cur)) {    // 落下できる?
             ++s_piece_cur.y;
-            ++cur.y;
-            if (!field_canPlacePiece(&cur))
-                s_fall_time = cur_time + s_speed;
-            else
-            s_fall_time = cur_time + GAME_LAND_TIME;
         } else {    // 着地.
             s_draw_flags |= DRAWF_INFO;
             field_placePiece(&s_piece_cur);
@@ -456,7 +461,6 @@ static bool gamePlay(void) {
                 return 0;   // 出現場所で衝突 → GAME OVER.
         }
     }
-
     return 1;
 }
 
@@ -519,17 +523,21 @@ static void checkLevelUp(void) {
 }
 
 /// ゲームオーバー.
-/// @return 1=処理中 2=リトライ 0=終了.
+/// @return 1=処理中 2=リトライ 3=title 0=終了.
 static uint8_t gameOver(void) {
-    cons_key_t k = cons_key();
-    if (s_high_score < s_score)
-        s_high_score = s_score;
-    s_draw_flags = (s_step) ? 0 : DRAWF_ALL;
-    ++s_step;
-    if (k == 'r' || k == 'R')
-        return 2;   // リトライ.
-    else if (k == 'q' || k == 'Q')
-        return 0;   // 終了.
+    if (s_step == 0) {
+        s_choise = 0;
+        ++s_step;
+    } else {
+        uint8_t k = getKey();
+        s_choise  = (s_choise + 3 - (k == key_left) + (k == key_right)) % 3;
+        if (k == key_1 || k == key_2) {
+            static uint8_t const rets[3] = { 2, 3, 0 };
+            return rets[s_choise];
+        } else if (k == key_cancel) {
+            return 0;   // ESC は強制終了.
+        }
+    }
     return 1;   // 入力待ち.
 }
 
@@ -544,7 +552,6 @@ static uint8_t gameOver(void) {
 #define COL_TITLE                   (4)
 #define COL_START                   (6)
 #define COL_GAMEOVER                (3)
-
 #define COL_SUB                     (1)
 #define COL_L_SUB                   (6)
 #define COL_HELP                    (5)
@@ -559,7 +566,6 @@ static uint8_t gameOver(void) {
 #define COL_TITLE                   (4|CONS_COL_LIGHT)
 #define COL_START                   (6|CONS_COL_LIGHT)
 #define COL_GAMEOVER                (3|CONS_COL_LIGHT)
-
 #define COL_SUB                     (6)
 #define COL_L_SUB                   (6|CONS_COL_LIGHT)
 #define COL_HELP                    (5)
@@ -572,7 +578,7 @@ static uint8_t gameOver(void) {
 
 #if !defined(USE_SELECT_PIECE)
 
-#if defined(__PCAT__)
+#if defined(__PCAT__) && (CONSINIT_FLAGS & 1)  // PC-AT 40x25
 
 #define STR_SPC                     " "
 #define STR_P_FIX                   " "
@@ -584,20 +590,31 @@ static uint8_t gameOver(void) {
 #define STR_WALL                    "|"
 #define FIELD_SCALE_X(x)            (x)
 
-#elif defined(__PC98__)
+#elif defined(__PC98__)             // PC98 80x25
 
 #define STR_SPC                     "  "
-#define STR_P_FIX                  "\x81\xA1"   // "■"
+#define STR_P_FIX                   "\x81\xA1"   // "■"
 #define ATR_P_FIX                   0x00
 #define STR_P_FALL                  "  "
 #define ATR_P_FALL                  CONS_COL_REVERSE
 #define STR_P_REACH                 "  "
 #define ATR_P_REACH                 CONS_COL_REVERSE
-#define STR_WALL                   "\x86\xA5"   // "┃"
+#define STR_WALL                    "\x86\xA5"   // "┃"
 #define FIELD_SCALE_X(x)            ((x) << 1)
 
-#elif CONS_COL_REVERSE > 0
+#elif CONS_COL_REVERSE > 0          // 反転有.
 
+#if CONS_COL_LIGHT > 0              // 16 色.
+#define STR_SPC                     "  "
+#define STR_P_FIX                   "  "
+#define ATR_P_FIX                   CONS_COL_REVERSE
+#define STR_P_FALL                  "  "
+#define ATR_P_FALL                  (CONS_COL_REVERSE|CONS_COL_LIGHT)
+#define STR_P_REACH                 "  "
+#define ATR_P_REACH                 (CONS_COL_REVERSE|CONS_COL_LIGHT)
+#define STR_WALL                    "||"
+#define FIELD_SCALE_X(x)            ((x) << 1)
+#else                               // 8色.
 #define STR_SPC                     "  "
 #define STR_P_FIX                   "[]"
 #define ATR_P_FIX                   0x00
@@ -607,8 +624,9 @@ static uint8_t gameOver(void) {
 #define ATR_P_REACH                 CONS_COL_REVERSE
 #define STR_WALL                    "||"
 #define FIELD_SCALE_X(x)            ((x) << 1)
+#endif
 
-#else
+#else                               // 反転無.
 
 #define STR_SPC                     " "
 #define STR_P_FIX                   "O"
@@ -622,7 +640,7 @@ static uint8_t gameOver(void) {
 
 #endif
 
-#else   // USE_SELECT_PIECE ピース・スタイル選択.
+#else   // USE_SELECT_PIECE ピース・スタイル選択可能.(デバッグ向き)
 
 #define STR_SPC                     (s_piece_parts->part[0])
 #define STR_P_FIX                   (s_piece_parts->part[1])
@@ -645,13 +663,13 @@ static PieceParts  const piece_parts_tbl[] = {
     { 0, { 0x10, 0x18, 0x18 }, { " " , " " , " " , " " , "|"  } },
     { 0, {    0,    8,    8 }, { " " , "O" , "O" , "#" , "|"  } },
     { 1, {    0,    8,    8 }, { "  ", "[]", "[]", "[]", "||" } },
- #if defined(USE_UNICODE)
+ #if defined(CONS_USE_UNICODE)
     { 1, {    0,    8, 0x18 }, { "  ", "■", "■", "  ", "‖" } },
  #endif
 };
 enum { PiecePartsTbl_size = sizeof(piece_parts_tbl) / sizeof(piece_parts_tbl[0]) };
 
-static PieceParts  const*   s_piece_parts   = &piece_parts_tbl[0];
+static PieceParts const*    s_piece_parts   = &piece_parts_tbl[0];
 static uint8_t              s_field_shift_x = 0;
 static uint8_t              s_piece_stype   = 0;    ///< ピースの表示スタイル.
 
@@ -669,6 +687,7 @@ static void select_piece_init(int piece_stype) {
 }
 #endif  // USE_SELECT_PIECE
 
+// 変数.
 static pos_t    s_draw_field_x;
 static pos_t    s_draw_field_y;
 
@@ -734,12 +753,15 @@ static void draw_gameTitle(void) {
     char const* ttl = "O T I - G E";
  #endif
     cons_xycputs((w-strlen(ttl))>>1, y+2, COL_TITLE, ttl);
-    draw_piece((w-FIELD_SCALE_X(4))>>1,y+7,s_piece_cur.shape,s_piece_cur.r,1);
     cons_xycputs((w-11)>>1, y+14, co, "HIT ANY KEY");
  #if defined(USE_SELECT_PIECE)
     cons_xycputs((w-21)>>1, y+16, co, "([C]hange the pieces)");
+    if (s_step == 1)
+        select_piece_init(-1);
  #endif
-    cons_setRefreshRect(0, (w-24)>>1, y+2, 24, 16-2);   // 画面更新範囲.
+    draw_piece((w-FIELD_SCALE_X(4))>>1,y+7,s_piece_cur.shape,s_piece_cur.r,1);
+    if (s_step > 1)
+        cons_setRefreshRect(0, (w-24)>>1, y+2, 24, 16-2);   // 画面更新範囲.
 }
 
 /// ゲーム開始描画.
@@ -759,7 +781,7 @@ static void draw_gamePlay(void) {
     uint8_t x, y;
     pos_t   ofs_x = (cons_screenWidth()  - FIELD_SCALE_X(FIELD_W)) >> 1;
     pos_t   ofs_y = (cons_screenHeight() - FIELD_H) >> 1;
- #if (CONSINIT_FLAGS & 1) == 1
+ #if (CONSINIT_FLAGS & 1) == 1  // スクリーン横幅40文字の時.
     ofs_x -= 10;
  #endif
 
@@ -798,6 +820,7 @@ static void draw_gamePlay(void) {
                 }
             }
         }
+        //cons_xyprintf(ofs_x,ofs_y-1,"%6lx n:%6lx",cons_clock(),s_fall_time);
 
         // 現在のピースを表示.
         x = ofs_x + FIELD_SCALE_X(s_piece_cur.x);
@@ -884,6 +907,7 @@ static void draw_gamePlay(void) {
         cons_xyputs(x, y+1, "Rotate: SPACE  KEY");
         cons_xyputs(x, y+2, "Quit  : ESC    KEY");
       #endif
+
     }
 }
 
@@ -898,22 +922,33 @@ static void draw_gameOver(void) {
     pos_t   y    = (sc_h - h) >> 1;
 
     if (s_draw_flags & DRAWF_OVER) {    // 実質初回のみ描画.
-        char    buf[64];
-        size_t  l;
-        uint8_t i;
+        char    buf[128];
+        pos_t   l;
         draw_gamePlay();
-        for (i = 0; i < h; ++i)
-            cons_xycprintf(0, y + i, COL_DEFAULT, "%*c", sc_w-1, ' ');
+        for (l = 0; l < h; ++l) // 矩形でなく帯で描画.
+            cons_xycprintf(0, y + l, COL_DEFAULT, "%*c", sc_w-1, ' ');
         cons_xycputs(x+((w-16)>>1), y+2, COL_GAMEOVER , "G A M E  O V E R");
         snprintf(buf, sizeof(buf), "Score: %u%s", s_score, s_score ? "00":"");
-        l = strlen(buf);
-        cons_xycputs(x+(w-l  )/2U, y+5, COL_L_SUB , buf);
+        cons_xycputs(x+((w-strlen(buf))>>1), y+5, COL_L_SUB , buf);
+        //cons_setRefreshRect(3,x,y,w,h);
+    } else {
+        cons_setRefreshRect(3,x,y+7,w,1);   // 選択肢のみ更新.
     }
-    {   // 点滅する入力待ち.
-        uint8_t co = (cons_tick() & 0x30) ? COL_L_INP : COL_INP;
-        cons_xycputs(x+((w-16)>>1), y+7, co, "[R]etry / [Q]uit");
+    {   //選択肢表示.
+        static char const sels[2][3][8] = {
+            { " Retry ", " Title ", " Exit ", },
+            { "[Retry]", "[Title]", "[Exit]", },
+        };
+        static uint8_t const col[2] = { COL_INP, COL_L_INP, };
+        uint8_t n;
+        y += 7;
+        n = (s_choise == 0);
+        cons_xycputs(x      , y, col[n], sels[n][0]);
+        n = (s_choise == 1);
+        cons_xycputs(x +   7, y, col[n], sels[n][1]);
+        n = (s_choise == 2);
+        cons_xycputs(x + 2*7, y, col[n], sels[n][2]);
     }
-    cons_setRefreshRect(3,x,y,w,h);
 }
 
 

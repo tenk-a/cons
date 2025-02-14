@@ -10,10 +10,10 @@
   @echo [[%1]]
   @echo:
 )
-@if /I "%1"=="VC_WIN64" goto BLD_VC_WIN64
-@if /I "%1"=="VC_WIN32" goto BLD_VC_WIN32
-@if /I "%1"=="VC_ARM64" goto BLD_VC_ARM64
-@if /I "%1"=="VC_ARM32" goto BLD_VC_ARM32
+@if /I "%1"=="VC-WIN64" goto BLD_VC_WIN64
+@if /I "%1"=="VC-WIN32" goto BLD_VC_WIN32
+@if /I "%1"=="VC-ARM64" goto BLD_VC_ARM64
+@if /I "%1"=="VC-ARM32" goto BLD_VC_ARM32
 @if /I "%1"=="MSYS64"   goto BLD_MSYS64
 @if /I "%1"=="MSYS32"   goto BLD_MSYS32
 @if /I "%1"=="WATCOM"   goto BLD_WATCOM
@@ -31,10 +31,10 @@ cmd /c all_bld.bat WATCOM
 cmd /c all_bld.bat MSYS64
 cmd /c all_bld.bat MSYS32
 cmd /c all_bld.bat DJGPP
-cmd /c all_bld.bat VC_WIN64
-cmd /c all_bld.bat VC_WIN32
-cmd /c all_bld.bat VC_ARM64
-cmd /c all_bld.bat VC_ARM32
+cmd /c all_bld.bat VC-WIN64
+cmd /c all_bld.bat VC-WIN32
+cmd /c all_bld.bat VC-ARM64
+cmd /c all_bld.bat VC-ARM32
 goto END
 
 

@@ -26,7 +26,15 @@
 #define CONS_USE_SJIS
 //#define CONS_USE_NEAR_TEXT_BUF
 
-#if defined __FLAT__    // 32bit DOS
+#if defined(__FLAT__)
+//#define USE_T10MS
+#else
+#define USE_VSYNC_INTR
+//#define USE_T10MS
+//#define USE_T10MS_INTR
+#endif
+
+#if defined(__FLAT__)   // 32bit DOS
 #undef __far
 #define __far
 #define MK_FAR_PTR(a,b) ((a << 4) + (b))
@@ -109,7 +117,7 @@ static void text_conPut(char const* s) {
     union REGS regs = {0};
     regs.h.ah = 0x06;
     while ((regs.h.dl = *s++) != 0) {
-        intdos(&regs, &regs);
+        int86(0x21, &regs, &regs);
     }
 }
 //static void text_PFKeySw(uint8_t f) {text_ConPut((f)?"\[[>1l":"\[[>1h");}
@@ -122,7 +130,7 @@ static void text_conPut(char const* s) {
 
 /** Is a key pressed?
  */
-static int  key_kbHit(void) {
+static int key_kbHit(void) {
     union REGS regs;
     regs.h.ah = 0x01;
     int86(0x18, &regs, &regs);
@@ -153,7 +161,7 @@ static int key_getch(void) {
 static void key_bufClr(void) {
     union REGS regs;
     regs.w.ax = 0x0cff;
-    intdos(&regs, &regs);
+    int86(0x21, &regs, &regs);
 }
 
 
@@ -188,6 +196,91 @@ static int key_sence(unsigned char keyGrp) {
 
 
 //  -   -   -   -   -   -   -   -   -   -
+// Timer
+
+#if defined(USE_T10MS)
+
+static uint32_t s_t10ms_count;
+static uint32_t s_t10ms_time;
+static uint32_t s_t10ms_time_start;
+
+/** Get milli-seconds.
+ */
+static uint32_t t10ms_getMilliSec(void) {
+    union  REGS regs  = {0};
+    uint32_t    ct;
+
+    regs.h.ah = 0x2c;
+    int86(0x21, &regs, &regs);
+    if (regs.h.ch > 23 || regs.h.cl > 59 || regs.h.dh > 59 || regs.h.dl > 99) {
+        ct = s_t10ms_time;
+        //return 0xFEDCBA98;
+    } else {
+        ct = regs.h.ch * 60 * 60 * 100 + regs.h.cl * 60 * 100 + regs.h.dh * 100 + regs.h.dl;
+    }
+    if (s_t10ms_time_start == 0) {
+        s_t10ms_time_start = ct;
+    } else if (ct < s_t10ms_time_start) {
+        ct = s_t10ms_time;
+        if (ct < s_t10ms_time_start)
+            ct = s_t10ms_time_start;
+        //return 0x98765432;
+    }
+    if (ct < s_t10ms_time) {    // hi matagi
+        ct += 24 * 60 * 60 * 100;
+        if (ct < s_t10ms_time) {
+            ct = s_t10ms_time;
+            //return 0x76543210;
+        }
+    }
+    s_t10ms_time  = ct;
+    s_t10ms_count = ct - s_t10ms_time_start;
+    return s_t10ms_count * 10;
+}
+
+static inline void t10ms_init(void) { t10ms_getMilliSec(); }
+static inline void t10ms_term(void) {}
+
+#elif defined(USE_T10MS_INTR)
+
+static volatile unsigned long s_t10ms_count = 0;
+
+static void t10ms_init(void);
+
+/** Interval timer handler.
+ */
+static void interrupt t10ms_handler(void) {
+    ++s_t10ms_count;
+    _enable();
+    t10ms_init();
+}
+
+/** Timer start.
+ */
+static void t10ms_init(void) {
+    union  REGS  regs;
+    struct SREGS sregs;
+    regs.h.ah = 0x02;
+    regs.w.cx = 1;    // 1 => 10ms.
+    regs.w.bx = FAR_PTR_OFF(t10ms_handler);
+    sregs.es  = FAR_PTR_SEG(t10ms_handler);
+    int86x(0x1C, &regs, &regs, &sregs);
+}
+
+/** Timer stop.
+ */
+static void t10ms_term(void) {
+}
+
+/** Get milli-seconds.
+ */
+static unsigned long t10ms_getMilliSec(void) {
+    return s_t10ms_count * 10;
+}
+#endif
+
+
+//  -   -   -   -   -   -   -   -   -   -
 //  vsync
 
 /** vblank start wait.
@@ -202,8 +295,9 @@ static void vsync_wait(void) {
     }
 }
 
-enum { VSYNC_INTR = 0x0a };
+#if defined(USE_VSYNC_INTR)
 
+enum { VSYNC_INTR = 0x0a };
 static volatile uint32_t        s_vsync_count = 0;
 static void (__interrupt __far *s_vsync_handler_old)(void) = NULL;
 
@@ -244,103 +338,29 @@ static void vsync_counterTerm(void) {
 
 /** Get vsync-counter.
  */
-static cons_clock_t vsync_counterGet(void) {
- #if 1
+static inline cons_clock_t vsync_counterGet(void) {
     return s_vsync_count;
- #else
-    static cons_clock_t s_clock = 0;
-    return ++s_clock;
- #endif
 }
 
-//  -   -   -   -   -   -   -   -   -   -
-// Timer
-
-#if !defined(__FLAT__)
-#define USE_T10MS
-#endif
-
-#if defined(USE_T10MS)
-
-static volatile unsigned long s_t10ms_count = 0;
-
-#if 1
-static void t10ms_init(void);
-
-/// Interval timer handler.
-static void interrupt t10ms_handler(void) {
-    ++s_t10ms_count;
-    _enable();
-    t10ms_init();
-}
-
-/// Timer start.
-static void t10ms_init(void) {
- #if !defined(__FLAT__)
-    union  REGS  regs;
-    struct SREGS sregs;
-    regs.h.ah = 0x02;
-    regs.w.cx = 1;    // 1 => 10ms.
-    regs.w.bx = FAR_PTR_OFF(t10ms_handler);
-    sregs.es  = FAR_PTR_SEG(t10ms_handler);
-    int86x(0x1C, &regs, &regs, &sregs);
- #elif 1
-    union  REGS  regs  = {0};
-    regs.h.ah  = 0x02;
-    regs.w.cx  = 1;
-    regs.x.ebx = (unsigned int)t10ms_handler;
-    int86(0x1C, &regs, &regs);
- #endif
-}
-
-/// Timer stop.
-static void t10ms_term(void) {
-}
+#elif defined(USE_T10MS) || defined(USE_T10MS_INTR)
+#define vsync_counterInit()
+#define vsync_counterTerm()
+#define vsync_counterGet()  (s_t10ms_count * 3U / 5U)   // 60 / 100
 #else
-static void interrupt (*t10ms_handler_old)(void) = NULL;
-
-static void t10ms_init(void);
-enum { T10MS_INTR = 7 };
-
-///
-static void interrupt t10ms_handler(void) {
-    ++s_t10ms_count;
-    if (t10ms_handler_old) {
-        (*t10ms_handler_old)();
-    }
+static volatile uint32_t s_vsync_count = 0;
+static inline cons_clock_t vsync_counterGet(void) {
+    return ++s_vsync_count;
 }
+#define vsync_counterInit()
+#define vsync_counterTerm()
+#endif  // USE_VSYNC_INTR
 
-/// Timer start.
-static void t10ms_init(void) {
-    s_t10ms_count     = 0;
-    _disable();
-    t10ms_handler_old = _dos_getvect(T10MS_INTR);
-    _dos_setvect(T10MS_INTR, t10ms_handler);
-    _enable();
-}
-
-/// Timer stop.
-static void t10ms_term(void) {
-    if (t10ms_handler_old) {
-        _disable();
-        _dos_setvect(T10MS_INTR, t10ms_handler_old);
-        _enable();
-    }
-}
+#if !defined(USE_T10MS) && !defined(USE_T10MS_INTR)
+#define t10ms_init()
+#define t10ms_term()
+#define t10ms_getMilliSec()     (s_vsync_count * 1000 / 60)
 #endif
 
-/// Get milli-seconds.
-static unsigned long t10ms_getMilliSec(void) {
-    return s_t10ms_count * 10;
-}
-#else
-static void t10ms_init(void) {}
-static void t10ms_term(void) {}
-/// Get milli-seconds.
-static unsigned long t10ms_getMilliSec(void) {
-    return s_vsync_count * 1000 / 60;
-}
-#endif
 
 
 // ================================================================
@@ -401,8 +421,8 @@ void cons_updateBegin(void) {
 
     cons_setxy(0,0);
     cons_setcolor(7);
-    _cons_PRIVATE_tick    = vsync_counterGet();
     _cons_PRIVATE_clock   = t10ms_getMilliSec();
+    _cons_PRIVATE_tick    = vsync_counterGet();
     _cons_PRIVATE_key     = CONS_KEY_ERR;
     if (key_kbHit()) {
         _cons_PRIVATE_key = key_getch();
