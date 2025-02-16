@@ -25,9 +25,6 @@ case ${Toolchain} in
     cmake -G "Xcode" --debug-output -B bld/${Toolchain} .
     cmake --build bld/${Toolchain} --config Release
     ;;
-  ia16-*)
-    cmake -DCMAKE_TOOLCHAIN_FILE=toolchain/${Toolchain}-toolchain.cmake -DCMAKE_BUILD_TYPE=Release -B bld/${Toolchain}  .
-    ;;
   *)
     cmake -DCMAKE_TOOLCHAIN_FILE=toolchain/${Toolchain}-toolchain.cmake -DCMAKE_BUILD_TYPE=Release -B bld/${Toolchain}  .
     cmake --build bld/${Toolchain}
