@@ -1,7 +1,13 @@
 cmake_minimum_required(VERSION 3.24)
 
 # cmake:プロジェクト.
-project(otitame C)
+set(PROJ_NAME1 mines)
+project(${PROJ_NAME1} C)
+
+# VS で開いた時、project() 設定したプロジェクトがカレントになるようにする指定.
+if(MSVC)
+  set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJ_NAME1})
+endif()
 
 # ソース・ディレクトリのパス.
 set(SRC_DIR "${CMAKE_SOURCE_DIR}/src")
@@ -21,40 +27,74 @@ endif()
 set(CONS_PLATFORM ${TOOLCHAIN_NAME})
 add_subdirectory("${SRC_DIR}/cons")
 
+#	-	-	-	-	-	-	-	-
+
 # cmake:実行ファイル生成
-add_executable(${PROJECT_NAME}
-  "${SRC_DIR}/otitame/otitame.c"
+add_executable(${PROJ_NAME1}
+  "${SRC_DIR}/mines/mines.c"
   ${TOOLCHAIN_ADD_SRCS}
 )
 
 # cmake:コンパイル・オプション設定.
-target_compile_options(${PROJECT_NAME} PRIVATE
+target_compile_options(${PROJ_NAME1} PRIVATE
   ${TOOLCHAIN_ADD_OPTS}
 )
 
 # cmake: include ディレクトリ設定.
-target_include_directories(${PROJECT_NAME} PRIVATE
+target_include_directories(${PROJ_NAME1} PRIVATE
   ${TOOLCHAIN_ADD_INCLUDE_DIRS}
   ${SRC_DIR}
 )
 
 # cmake: ライブラリ・ディレクトリ設定.
-target_link_directories(${PROJECT_NAME} PRIVATE
+target_link_directories(${PROJ_NAME1} PRIVATE
   ${TOOLCHAIN_ADD_LINK_DIRS}
 )
 
 # cmake: ライブラリ設定.
-target_link_libraries(${PROJECT_NAME} PRIVATE
+target_link_libraries(${PROJ_NAME1} PRIVATE
   cons
   ${TOOLCHAIN_ADD_LIBS}
 )
 
 # cmake:インストール先を設定.
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS ${PROJ_NAME1}
   RUNTIME DESTINATION "${CMAKE_SOURCE_DIR}/bin/${TOOLCHAIN_NAME}"
 )
 
-# VS で開いた時、project() 設定したプロジェクトがカレントになるようにする指定.
-if(MSVC)
-  set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
-endif()
+#	-	-	-	-	-	-	-	-
+set(PROJ_NAME2 otitame)
+project(${PROJ_NAME2} C)
+
+# cmake:実行ファイル生成
+add_executable(${PROJ_NAME2}
+  "${SRC_DIR}/otitame/otitame.c"
+  ${TOOLCHAIN_ADD_SRCS}
+)
+
+# cmake:コンパイル・オプション設定.
+target_compile_options(${PROJ_NAME2} PRIVATE
+  ${TOOLCHAIN_ADD_OPTS}
+)
+
+# cmake: include ディレクトリ設定.
+target_include_directories(${PROJ_NAME2} PRIVATE
+  ${TOOLCHAIN_ADD_INCLUDE_DIRS}
+  ${SRC_DIR}
+)
+
+# cmake: ライブラリ・ディレクトリ設定.
+target_link_directories(${PROJ_NAME2} PRIVATE
+  ${TOOLCHAIN_ADD_LINK_DIRS}
+)
+
+# cmake: ライブラリ設定.
+target_link_libraries(${PROJ_NAME2} PRIVATE
+  cons
+  ${TOOLCHAIN_ADD_LIBS}
+)
+
+# cmake:インストール先を設定.
+install(TARGETS ${PROJ_NAME2}
+  RUNTIME DESTINATION "${CMAKE_SOURCE_DIR}/bin/${TOOLCHAIN_NAME}"
+)
