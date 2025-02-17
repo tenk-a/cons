@@ -1,13 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 # cmake:プロジェクト.
-set(PROJ_NAME1 mines)
-project(${PROJ_NAME1} C)
-
-# VS で開いた時、project() 設定したプロジェクトがカレントになるようにする指定.
-if(MSVC)
-  set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJ_NAME1})
-endif()
+project(cons_game C)
 
 # ソース・ディレクトリのパス.
 set(SRC_DIR "${CMAKE_SOURCE_DIR}/src")
@@ -30,6 +24,7 @@ add_subdirectory("${SRC_DIR}/cons")
 #	-	-	-	-	-	-	-	-
 
 # cmake:実行ファイル生成
+set(PROJ_NAME1 mines)
 add_executable(${PROJ_NAME1}
   "${SRC_DIR}/mines/mines.c"
   ${TOOLCHAIN_ADD_SRCS}
@@ -63,10 +58,9 @@ install(TARGETS ${PROJ_NAME1}
 )
 
 #	-	-	-	-	-	-	-	-
-set(PROJ_NAME2 otitame)
-project(${PROJ_NAME2} C)
 
 # cmake:実行ファイル生成
+set(PROJ_NAME2 otitame)
 add_executable(${PROJ_NAME2}
   "${SRC_DIR}/otitame/otitame.c"
   ${TOOLCHAIN_ADD_SRCS}
@@ -98,3 +92,10 @@ target_link_libraries(${PROJ_NAME2} PRIVATE
 install(TARGETS ${PROJ_NAME2}
   RUNTIME DESTINATION "${CMAKE_SOURCE_DIR}/bin/${TOOLCHAIN_NAME}"
 )
+
+#	-	-	-	-	-	-	-	-
+
+if(MSVC)
+  # VS で開いた時、project() 設定したプロジェクトがカレントになるようにする指定.
+  set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJ_NAME1})
+endif()
