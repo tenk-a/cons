@@ -21,7 +21,7 @@ endif()
 set(CONS_PLATFORM ${TOOLCHAIN_NAME})
 add_subdirectory("${SRC_DIR}/cons")
 
-#	-	-	-	-	-	-	-	-
+#       -       -       -       -       -       -       -       -
 
 # cmake:実行ファイル生成
 set(PROJ_NAME1 mines)
@@ -57,7 +57,7 @@ install(TARGETS ${PROJ_NAME1}
   RUNTIME DESTINATION "${CMAKE_SOURCE_DIR}/bin/${TOOLCHAIN_NAME}"
 )
 
-#	-	-	-	-	-	-	-	-
+#       -       -       -       -       -       -       -       -
 
 # cmake:実行ファイル生成
 set(PROJ_NAME2 otitame)
@@ -93,9 +93,51 @@ install(TARGETS ${PROJ_NAME2}
   RUNTIME DESTINATION "${CMAKE_SOURCE_DIR}/bin/${TOOLCHAIN_NAME}"
 )
 
-#	-	-	-	-	-	-	-	-
+#       -       -       -       -       -       -       -       -
+
+# cmake:実行ファイル生成
+set(PROJ_NAME3 hello)
+add_executable(${PROJ_NAME3}
+  "${SRC_DIR}/hello/hello.c"
+  ${TOOLCHAIN_ADD_SRCS}
+)
+
+# cmake:コンパイル・オプション設定.
+target_compile_options(${PROJ_NAME3} PRIVATE
+  ${TOOLCHAIN_ADD_OPTS}
+)
+
+# cmake: include ディレクトリ設定.
+target_include_directories(${PROJ_NAME3} PRIVATE
+  ${TOOLCHAIN_ADD_INCLUDE_DIRS}
+  ${SRC_DIR}
+)
+
+# cmake: ライブラリ・ディレクトリ設定.
+target_link_directories(${PROJ_NAME3} PRIVATE
+  ${TOOLCHAIN_ADD_LINK_DIRS}
+)
+
+# cmake: ライブラリ設定.
+target_link_libraries(${PROJ_NAME3} PRIVATE
+  cons
+  ${TOOLCHAIN_ADD_LIBS}
+)
+
+# cmake:インストール先を設定.
+install(TARGETS ${PROJ_NAME3}
+  RUNTIME DESTINATION "${CMAKE_SOURCE_DIR}/bin/${TOOLCHAIN_NAME}"
+)
+
+#       -       -       -       -       -       -       -       -
 
 if(MSVC)
   # VS で開いた時、project() 設定したプロジェクトがカレントになるようにする指定.
   set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJ_NAME1})
 endif()
+
+#       -       -       -       -       -       -       -       -
+#message(STATUS "TOOLCHAIN_ADD_OPTS: ${TOOLCHAIN_ADD_OPTS}")
+#message(STATUS "TOOLCHAIN_ADD_LIBS: ${TOOLCHAIN_ADD_LIBS}")
+#message(STATUS "TOOLCHAIN_ADD_LINK_DIRS: ${TOOLCHAIN_ADD_LINK_DIRS}")
+#message(STATUS "TOOLCHAIN_ADD_INCLUDE_DIRS: ${TOOLCHAIN_ADD_INCLUDE_DIRS}")

@@ -18,6 +18,7 @@
 @if /I "%1"=="MSYS32"   goto BLD_MSYS32
 @if /I "%1"=="WATCOM"   goto BLD_WATCOM
 @if /I "%1"=="DJGPP"    goto BLD_DJGPP
+@if /I "%1"=="DJGPC98"  goto BLD_DJGPC98
 @if /I "%1"=="BORLAND"  goto BLD_BORLAND
 @if /I "%1"=="VCVER-WIN32"  goto BLD_VCVER_WIN32
 @if /I "%1"=="ia16-elf-exe" goto BLD_IA16_ELF_EXE
@@ -26,10 +27,12 @@
 
 :: all build.
 chcp 65001
+
 cmd /c all_bld.bat WATCOM
 cmd /c all_bld.bat MSYS64
 cmd /c all_bld.bat MSYS32
 cmd /c all_bld.bat DJGPP
+cmd /c all_bld.bat DJGPC98
 cmd /c all_bld.bat VC-WIN64
 cmd /c all_bld.bat VC-WIN32
 cmd /c all_bld.bat VC-ARM64
@@ -41,11 +44,14 @@ cmd /c all_bld.bat linux
 cmd /c all_bld.bat VCVER-WIN32 140
 cmd /c all_bld.bat VCVER-WIN32 141
 cmd /c all_bld.bat VCVER-WIN32 142
+
 chcp 932
-cmd /c all_bld.bat VCVER-WIN32 90
-cmd /c all_bld.bat VCVER-WIN32 110
 cmd /c all_bld.bat VCVER-WIN32 120
+cmd /c all_bld.bat VCVER-WIN32 110
+cmd /c all_bld.bat VCVER-WIN32 90
+cmd /c all_bld.bat VCVER-WIN32 80
 cmd /c all_bld.bat BORLAND
+
 chcp 65001
 goto END
 
@@ -85,10 +91,10 @@ goto END
 :BLD_WATCOM
 call setcc.bat watcom
 call bld.bat watcom-win32
-call bld.bat watcom-dos32
 call bld.bat watcom-dos16-s
-call bld.bat watcom-pcat-dos32
+call bld.bat watcom-dos32
 call bld.bat watcom-pcat-dos16-s
+call bld.bat watcom-pcat-dos32
 call bld.bat watcom-pc98-dos16-s
 call bld.bat watcom-pc98-dos32
 goto END
@@ -106,6 +112,11 @@ goto END
 :BLD_DJGPP
 call setcc.bat djgpp
 call bld.bat djgpp-dos32
+goto END
+
+:BLD_DJGPC98
+call setcc.bat djgpc98
+call bld.bat djgpp-pc98-dos32
 goto END
 
 :BLD_BORLAND

@@ -62,6 +62,20 @@ if /i "%CcName%"=="vc71"       goto L_VC71
 if /i "%CcName%"=="vc70"       goto L_VC70
 if /i "%CcName%"=="vc60"       goto L_VC6
 
+if /i "%CcName%"=="vc14.3"     goto L_VC143
+if /i "%CcName%"=="vc14.2"     goto L_VC142
+if /i "%CcName%"=="vc14.1"     goto L_VC141
+if /i "%CcName%"=="vc14"       goto L_VC14
+if /i "%CcName%"=="vc13"       goto L_VC13
+if /i "%CcName%"=="vc12"       goto L_VC12
+if /i "%CcName%"=="vc11"       goto L_VC11
+if /i "%CcName%"=="vc10"       goto L_VC10
+if /i "%CcName%"=="vc9"        goto L_VC9
+if /i "%CcName%"=="vc8"        goto L_VC8
+if /i "%CcName%"=="vc7.1"      goto L_VC71
+if /i "%CcName%"=="vc7"        goto L_VC70
+if /i "%CcName%"=="vc6"        goto L_VC6
+
 if /i "%CcName%"=="msys"       goto L_MSYS2
 if /i "%CcName%"=="msys2"      goto L_MSYS2
 if /i "%CcName%"=="mingw"      goto L_MINGW
@@ -78,10 +92,18 @@ if /i "%CcName%"=="dmc"        goto L_DMC
 if /i "%CcName%"=="orangec"    goto L_ORANGEC
 if /i "%CcName%"=="occ"        goto L_ORANGEC
 if /i "%CcName%"=="borland"    goto L_BCC55
+if /i "%CcName%"=="bcc32"      goto L_BCC55
 if /i "%CcName%"=="bc55"       goto L_BCC55
 if /i "%CcName%"=="bcc101"     goto L_BCC101
+if /i "%CcName%"=="embarcadero" goto L_EmbarcaderoC76
+if /i "%CcName%"=="embarcaderoC76" goto L_EmbarcaderoC76
 
 if /i "%CcName%"=="djgpp"      goto L_DJGPP
+if /i "%CcName%"=="djgpp_msys2" goto L_DJGPP_MSYS2
+if /i "%CcName%"=="djgpp_mingw" goto L_DJGPP_MINGW
+if /i "%CcName%"=="djgpc98"    goto L_DJGPC98
+if /i "%CcName%"=="djgpc98_msys2" goto L_DJGPP_MSYS2
+if /i "%CcName%"=="djgpc98_mingw" goto L_DJGPP_MINGW
 
 @goto L_HELP
 
@@ -102,6 +124,7 @@ rem ## vc ######################################
 :L_VC141
     set VcVer=vc141
     set VcYear=2017
+    goto L_VC14x_J1
 
 :L_VC14x_J1
     set "VsRoot=%ProgramFiles(x86)%\Microsoft Visual Studio\%VcYear%"
@@ -235,57 +258,60 @@ rem ## vc ######################################
     if /i "%MSYS2_DIR%"=="" set "MSYS2_DIR=c:\msys64"
     if /I "%CcArch%"=="x64" goto L_MSYS2_CLANG64
     set COMPILER=msys2clang32
+    set "CC=clang.exe"
+    set "CXX=clang++.exe"
     set "PATH=%MSYS2_DIR%\clang32\bin;%MSYS2_DIR%\usr\bin;%setcc_base_path%"
-    goto :L_END
+    goto L_END
 :L_MSYS2_CLANG64
     set COMPILER=msys2clang64
     set "PATH=%MSYS2_DIR%\clang64\bin;%MSYS2_DIR%\usr\bin;%setcc_base_path%"
-    goto :L_END
+    goto L_END
 
 :L_MSYS2
     if /i "%MSYS2_DIR%"=="" set "MSYS2_DIR=c:\msys64"
     if /I "%CcArch%"=="x64" goto L_MSYS2_64
     set COMPILER=msys2mingw32
     set "PATH=%MSYS2_DIR%\mingw32\bin;%MSYS2_DIR%\usr\bin;%setcc_base_path%"
-    goto :L_END
+    goto L_END
 :L_MSYS2_64
     set COMPILER=msys2ucrt64
     set "PATH=%MSYS2_DIR%\ucrt64\bin;%MSYS2_DIR%\usr\bin;%setcc_base_path%"
-    goto :L_END
+    goto L_END
 
 :L_MINGW
     set COMPILER=mingw32
     if /i "%MINGW_DIR%"=="" set "MINGW_DIR=c:\MinGW"
     set "PATH=%MINGW_DIR%\bin;%MINGW_DIR%\msys\1.0\bin;%setcc_base_path%"
-    goto :L_END
+    goto L_END
 
 :L_CYGWIN
     if /I "%CcArch%"=="x64" goto L_CYGWIN64
     set COMPILER=cygwin32
     if /i "%CYGWIN32_DIR%"=="" set "CYGWIN_DIR32=c:\cygwin"
     set "PATH=%CYGWIN_DIR32%\bin;%setcc_base_path%"
-    goto :L_END
+    goto L_END
 
 :L_CYGWIN64
     set COMPILER=cygwin64
     if /i "%CYGWIN64_DIR%"=="" set "CYGWIN64_DIR=c:\cygwin64"
     set "PATH=%CYGWIN64_DIR%\bin;%setcc_base_path%"
-    goto :L_END
+    goto L_END
 
 :L_ORANGEC
     set COMPILER=orangec
     if /i "%ORANGEC_DIR%"=="" set "ORANGEC_DIR=C:\Program Files (x86)\Orange C 386"
     set "PATH=%ORANGEC_DIR%\bin;%setcc_base_path%"
-    goto :L_END
+    goto L_END
 
 :L_DMC
     set COMPILER=dmc
     if /i "%DMC_DIR%"=="" set "DMC_DIR=c:\dm"
-    rem set "PATH=%DMC_DIR%\bin;%setcc_base_path%"
-    set "PATH=d:\proj\cc_for_dmc\bin;%DMC_DIR%\bin;%setcc_base_path%"
+    set "PATH=%DMC_DIR%\bin;%setcc_base_path%"
+    ::
+    set "PATH=d:\proj\cc_for_dmc\bin;%PATH%"
     set "CC=dmc-cc.exe"
     set "CXX=dmc-cc.exe"
-    goto :L_END
+    goto L_END
 
 :L_OW19
     set COMPILER=ow19
@@ -306,28 +332,49 @@ rem ## vc ######################################
     set "FINCLUDE=%WATCOM%\SRC\FORTRAN"
     set "WHTMLHELP=%WATCOM%\BINNT\HELP"
     set "WIPFC=%WATCOM%\WIPFC"
-    goto :L_END
+    goto L_END
 
 :L_BCC55
     set COMPILER=bcc55
     if /i "%BCC55_DIR%"=="" set "BCC55_DIR=c:\borland\bcc55"
     set "PATH=%BCC55_DIR%\bin;%setcc_base_path%"
     set "INCLUDE=%BCC55_DIR%\include;%BCC55_DIR%\include\Rw;%BCC55_DIR%\include\psdk"
-    goto :L_END
+    goto L_END
 
 :L_BCC101
     set COMPILER=bcc101
     if /i "%BCC101_DIR%"=="" set "BCC101_DIR=c:\tools\bcc101"
     set "PATH=%BCC101_DIR%\bin;%setcc_base_path%"
-    goto :L_END
+    goto L_END
 
+:L_EmbarcaderoC76
+    set COMPILER=EmbarcaderoC76
+    if /i "%EMBARCADERO_DIR%"=="" set "EMBARCADERO_DIR=%ProgramFiles(x86)%\Embarcadero\Studio\22.0"
+    set "PATH=%EMBARCADERO_DIR%\bin;%setcc_base_path%"
+    goto L_END
+
+:L_DJGPC98_MSYS2
+:L_DJGPC98
+	set "DJGPP_DIR=c:\djgpc98"
+:L_DJGPP_MSYS2
 :L_DJGPP
+    if /i "%MSYS2_DIR%"=="" set "MSYS2_DIR=c:\msys64"
+    if /i "%DJGPP_DIR%"=="" set "DJGPP_DIR=c:\djgpp"
+    set "MSDOSDJGPP_DIR=i386-pc-msdosdjgpp"
+    set "PATH=%DJGPP_DIR%\bin;%DJGPP_DIR%\%MSDOSDJGPP_DIR%\bin;%MSYS2_DIR%\usr\bin;%MSYS2_DIR%\mingw64\bin;%setcc_base_path%"
+    set  GCC_EXEC_PREFIX=%DJGPP_DIR%\lib\gcc\
+    goto L_END
+
+:L_DJGPC98_MINGW
+	set DJGPP_DIR=c:\djgpc98
+:L_DJGPP_MINGW
     set COMPILER=djgpp
     if /i "%MINGW_DIR%"=="" set "MINGW_DIR=c:\MinGW"
     if /i "%DJGPP_DIR%"=="" set "DJGPP_DIR=c:\djgpp"
-    set "PATH=%DJGPP_DIR%\bin;%DJGPP_DIR%\i586-pc-msdosdjgpp\bin;%MINGW_DIR%\bin;%MINGW_DIR%\msys\1.0\bin;%setcc_base_path%"
+    set "MSDOSDJGPP_DIR=i586-pc-msdosdjgpp"
+    set "PATH=%DJGPP_DIR%\bin;%DJGPP_DIR%\%MSDOSDJGPP_DIR%\bin;%MINGW_DIR%\bin;%MINGW_DIR%\msys\1.0\bin;%setcc_base_path%"
     set  GCC_EXEC_PREFIX=%DJGPP_DIR%\lib\gcc\
-    goto :L_END
+    goto L_END
 
 :L_END
 set VcVers_Args=

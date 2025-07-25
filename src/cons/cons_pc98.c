@@ -7,14 +7,27 @@
  */
 #include "cons_pc98.h"
 
+#include <stddef.h>
+#include <stdint.h>
+
 #if defined(__WATCOMC__)
-#define __WATCOM_PC98__
-#include <bios.h>
+ #define __WATCOM_PC98__
+ #include <bios.h>
+ #include <i86.h>
 #endif
-#include <i86.h>
+
+#if defined(__DJGPP__)
+ #ifndef __FLAT__
+  #define __FLAT__
+ #endif
+ #include <dpmi.h>
+ #include <go32.h>
+ #include <sys/nearptr.h>
+ #include <sys/movedata.h>
+#endif
+
 #include <dos.h>
 #include <conio.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,101 +36,169 @@
 #include <time.h>
 #include <assert.h>
 
-#define CONS_USE_SJIS
-//#define CONS_USE_NEAR_TEXT_BUF
+#define DPRINTF(...)
+//#define DPRINTF(...)      do { printf(__VA_ARGS__); fflush(stdout); } while (0)
+#define DBG_FL()            DPRINTF("%s %d\n", __FILE__, __LINE__)
 
-#if defined(__FLAT__)
-//#define USE_T10MS
+
+#if defined(__DJGPP__)
+ //#define USE_VSYNC_INTR
+#elif defined(__FLAT__)
+ #define USE_VSYNC_INTR
 #else
-#define USE_VSYNC_INTR
-//#define USE_T10MS
-//#define USE_T10MS_INTR
+ #define USE_VSYNC_INTR
 #endif
+
 
 #if defined(__FLAT__)   // 32bit DOS
-#undef __far
-#define __far
-#define MK_FAR_PTR(a,b) ((a << 4) + (b))
-#define _fmalloc        malloc
-#define _ffree          free
-#define int86           int386
-#else                   // 16bit DOS
-#define MK_FAR_PTR(a,b) (((uint32_t)(a) << 16) | (b))
-#define FAR_PTR_SEG(p)  ((uint16_t)((uint32_t)(void __far*)(p) >> 16))
-#define FAR_PTR_OFF(p)  ((uint16_t)((uint32_t)(p)))
+ #define FAR
+ #define MK_FAR_PTR(a,b)    (((a) << 4) | (b))
+ #define FAR_PTR_SEG(p)     ((uint16_t)((uint64_t)(void FAR*)(p) >> 32))
+ #define FAR_PTR_OFF(p)     ((uint32_t)((uint64_t)(p)))
+ #define _fmalloc           malloc
+ #define _ffree             free
+ #define _fmemcpy           memcpy
+ #define _fmemset           memset
+ #define ALIGNED_PTR(t,p,a) ((t)(((uintptr_t)(p) + (a) - 1) & ~((a) - 1)))
+ #if defined(__WATCOMC__)
+  #define W                 w
+  #define int86             int386
+  #define int86x            int386x
+  #define INTR_REGS         union REGS         // union REGPACK
+  #define INTR(n,r)         int86((n),(r),(r)) // intr((n), (r))
+  //extern uint8_t          __isPC98;          // watcom
+  #define dosPeekB(fp)      (*(uint8_t*)(fp))
+ #elif defined(__DJGPP__)
+  #define __far
+  #define W                 x
+  #define INTR_REGS         union REGS         //__dpmi_regs
+  #define INTR(n,r)         int86((n),(r),(r)) //__dpmi_int((n), (r))
+  static inline uint8_t dosPeekB(uint32_t dosptr) {
+    uint8_t b;
+    dosmemget(dosptr, sizeof(uint8_t), &b);
+    return b;
+  }
+ #endif
+ #if !defined(CONS_USE_NEAR_TEXT_BUF)
+  #define CONS_USE_NEAR_TEXT_BUF
+ #endif
+#else  // 16bit DOS
+ #define FAR                __far
+ #define MK_FAR_PTR(a,b)    (((uint32_t)(a) << 16) | (b))
+ #define FAR_PTR_SEG(p)     ((uint16_t)((uint32_t)(void FAR*)(p) >> 16))
+ #define FAR_PTR_OFF(p)     ((uint16_t)((uint32_t)(p)))
+ #define INTR_REGS          union REGS
+ #define INTR(n,r)          int86((n),(r), (r))
+ #define W                  w
+ #define ALIGNED_PTR(t,p,a) ((t)(((uint32_t)(p) + (a) - 1) & ~((a) - 1)))
+ #undef  __loadds
+ #define __loadds
+ #define dosPeekB(fp)       (*(uint8_t __far*)(fp))
 #endif
 
-#define TEXT_VRAM       ((uint16_t __far*)MK_FAR_PTR(0xA000,0x0000))
-#define ATTR_VRAM       ((uint16_t __far*)MK_FAR_PTR(0xA200,0x0000))
-#define TEXT_BUF_W      80
-#define TEXT_BUF_H      25
-#define TEXT_BUF_BYTES  (TEXT_BUF_W * TEXT_BUF_H * sizeof(uint16_t))
 
-//extern unsigned char __isPC98;    // watcom
+//  -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -
 
-#if !defined(CONS_USE_NEAR_TEXT_BUF)
-static uint16_t __far*  s_textBuf   = NULL;
-static uint16_t __far*  s_attrBuf   = NULL;
+#if defined(__DJGPP__)
+
+typedef __dpmi_paddr    intr_vect_t;
+static intr_vect_t getvect(uint8_t vec) {
+    intr_vect_t vect = {0,0};
+    __dpmi_get_protected_mode_interrupt_vector(vec, &vect);
+    return vect;
+}
+static int resetvect(uint8_t vec, intr_vect_t vect) {
+    if (vect.selector | vect.offset32)
+        return __dpmi_set_protected_mode_interrupt_vector(vec, &vect);
+    return -1;
+}
+static int setvect(uint8_t vec, void (*handler)(void)) {
+    intr_vect_t vect;
+    vect.selector = _go32_my_cs();
+    vect.offset32 = (uintptr_t)handler;
+    return __dpmi_set_protected_mode_interrupt_vector(vec, &vect);
+}
+#define irq_disable()   __dpmi_get_and_disable_virtual_interrupt_state()
+#define irq_enable()    __dpmi_get_and_enable_virtual_interrupt_state()
+
+#elif defined(__FLAT__) && defined(__WATCOM__)
+
+typedef void (__interrupt __far *intr_vect_t)();
+#define getvect(n)      _dos_getvect(n)
+#define resetvect(n,f)  do { if (f) _dos_setvect((n),(f)); } while (0)
+#define setvect(n,f)    _dos_setvect((n), (f))
+#if 0
+static int irq_disable(void) {
+    INTR_REGS r = {0};
+    r.W.ax = 0x0900;
+    INTR(0x31, &r);
+    return r.h.al;
+}
+static int irq_enable(void) {
+    INTR_REGS r = {0};
+    r.W.ax = 0x0901;
+    INTR(0x31, &r);
+    return r.h.al;
+}
 #else
-typedef struct aln_t {
-    void*   p;
-    double  d;
-} aln_t;
-static aln_t            s_buff[(2*TEXT_BUF_BYTES + 16) / sizeof(aln_t)];
-static uint16_t*        s_textBuf = NULL;
-static uint16_t*        s_attrBuf = NULL;
+#define irq_enable()
+#define irq_disable()
+#endif
+#else   // watcom dos16
+typedef void (__interrupt __far *intr_vect_t)();
+#define getvect(n)      _dos_getvect(n)
+#define resetvect(n,f)  do { if (f) _dos_setvect((n),(f)); } while (0)
+#define setvect(n,f)    _dos_setvect((n), (f))
+#define irq_enable()
+#define irq_disable()
 #endif
 
-static cons_col_t       s_cur_col   = 0;
 
-cons_clock_t            _cons_PRIVATE_tick;
-cons_clock_t            _cons_PRIVATE_clock;
-cons_key_t              _cons_PRIVATE_key;
-cons_pos_t              _cons_PRIVATE_screen_width  = TEXT_BUF_W;
-cons_pos_t              _cons_PRIVATE_screen_height = TEXT_BUF_H;
-cons_pos_t              _cons_PRIVATE_cur_x;
-cons_pos_t              _cons_PRIVATE_cur_y;
-
-typedef struct cons_rect_t {
-    cons_pos_t  x, y;
-    cons_pos_t  w, h;
-} cons_rect_t;
-
-static cons_rect_t const text_full_rect = { 0,0,TEXT_BUF_W,TEXT_BUF_H };
-static cons_rect_t      s_refresh_rect[CONS_REFRESH_RECT_N];
-static char             s_cons_sprintf_buf[CONS_PRINTF_BUF_SIZE];
-
+//  -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -
 
 /** Initialize video.
  */
 static void video_init() {
-    union REGS regs;
+    INTR_REGS regs = {0};
     regs.h.ah = 0x03;
-    int86(0x18, &regs, &regs);
+    INTR(0x18, &regs);
 }
 
 /** Show/hide text.
  */
 static void text_show(uint8_t flg) {
-    union REGS regs;
+    INTR_REGS regs = {0};
     regs.h.ah = (flg) ? 0x0c : 0x0d;
-    int86(0x18, &regs, &regs);
+    INTR(0x18, &regs);
 }
 
 /** Show/hide cursor.
  */
 static void text_cursorSw(uint8_t show) {
-    union REGS regs;
+    INTR_REGS regs = {0};
     regs.h.ah = (show) ? 0x11 : 0x12;
-    int86(0x18, &regs, &regs);
+    INTR(0x18, &regs);
+}
+
+/** vblank start wait.
+ */
+static void vsync_wait(void) {
+    enum { STATUS_PORT = 0xA0 };
+
+    while ((inp(STATUS_PORT) & 0x20)) {
+        ;
+    }
+    while (!(inp(STATUS_PORT) & 0x20)) {
+        ;
+    }
 }
 
 #if 0
 static void text_conPut(char const* s) {
-    union REGS regs = {0};
+    INTR_REGS regs = {0};
     regs.h.ah = 0x06;
     while ((regs.h.dl = *s++) != 0) {
-        int86(0x21, &regs, &regs);
+        INTR(0x21, &regs);
     }
 }
 //static void text_PFKeySw(uint8_t f) {text_ConPut((f)?"\[[>1l":"\[[>1h");}
@@ -125,25 +206,25 @@ static void text_conPut(char const* s) {
 #endif
 
 
-//  -   -   -   -   -   -   -   -   -   -
+//  -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -
 //  Key
 
 /** Is a key pressed?
  */
 static int key_kbHit(void) {
-    union REGS regs;
+    INTR_REGS regs = {0};
     regs.h.ah = 0x01;
-    int86(0x18, &regs, &regs);
+    INTR(0x18, &regs);
     return regs.h.bh != 0;
 }
 
 /**
  */
 static int key_wait(void) {
-    union REGS regs;
+    INTR_REGS regs = {0};
     regs.h.ah = 0x00;
-    int86(0x18, &regs, &regs);
-    return regs.w.ax;
+    INTR(0x18, &regs);
+    return regs.W.ax;
 }
 
 /** One key input
@@ -159,265 +240,356 @@ static int key_getch(void) {
 /** Clear key buffer.
  */
 static void key_bufClr(void) {
-    union REGS regs;
-    regs.w.ax = 0x0cff;
-    int86(0x21, &regs, &regs);
+    INTR_REGS regs = {0};
+    regs.W.ax = 0x0cff;
+    INTR(0x21, &regs);
 }
 
 
 #if 0
 static int key_scan(void) {
-    union REGS regs;
+    INTR_REGS regs = {0};
     regs.h.ah = 0x01;
     //  out ax　key code data
     //  out bh  0:disable 1:enable
-    int86(0x18, &regs, &regs);
+    INTR(0x18, &regs);
     if (regs.h.bh == 0)
         return -1;
-    return regs.x.ax;
+    return regs.W.ax;
 }
 
 //  out al  b0:SHIFT  b1:CAPS  b2:KANA  b3:GRPH  b4:CTRL
 static unsigned key_shift(void) {
-    union REGS regs;
+    INTR_REGS regs = {0};
     regs.h.ah = 0x02;
-    int86(0x18, &regs, &regs);
+    INTR(0x18, &regs);
     return regs.h.al;
 }
 
-static int key_sence(unsigned char keyGrp) {
-    union REGS regs;
+static int key_sence(uint8_t keyGrp) {
+    INTR_REGS regs = {0};
     regs.h.al = keyGrp;
     regs.h.ah = 0x04;
-    int86(0x18, &regs, &regs);
+    INTR(0x18, &regs);
     return regs.h.al;
 }
 #endif
 
 
-//  -   -   -   -   -   -   -   -   -   -
-// Timer
+//  -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -
 
-#if defined(USE_T10MS)
+// Text-Vram
 
-static uint32_t s_t10ms_count;
-static uint32_t s_t10ms_time;
-static uint32_t s_t10ms_time_start;
+#define TVRAM_TXT_SEG       0xA000
+#define TVRAM_ATR_SEG       0xA200
 
-/** Get milli-seconds.
- */
-static uint32_t t10ms_getMilliSec(void) {
-    union  REGS regs  = {0};
-    uint32_t    ct;
+#define TVRAM_W             80
+#define TVRAM_H             s_tvram_height  //25 //31
+#define TVRAM_MAX_H         32
+#define TVRAM_BUF_ATR_OFS   0x1000  // (TVRAM_W * TVRAM_H) ha dame datta.
+#define TVRAM_BUF_BYTES     (TVRAM_BUF_ATR_OFS * sizeof(uint16_t))
+#define TVRAM_BUF_ALC_BYTES (2 * TVRAM_BUF_BYTES)
+#define TVRAM_ALIGN_BYTES   16  //256
 
-    regs.h.ah = 0x2c;
-    int86(0x21, &regs, &regs);
-    if (regs.h.ch > 23 || regs.h.cl > 59 || regs.h.dh > 59 || regs.h.dl > 99) {
-        ct = s_t10ms_time;
-        //return 0xFEDCBA98;
-    } else {
-        ct = regs.h.ch * 60 * 60 * 100 + regs.h.cl * 60 * 100 + regs.h.dh * 100 + regs.h.dl;
-    }
-    if (s_t10ms_time_start == 0) {
-        s_t10ms_time_start = ct;
-    } else if (ct < s_t10ms_time_start) {
-        ct = s_t10ms_time;
-        if (ct < s_t10ms_time_start)
-            ct = s_t10ms_time_start;
-        //return 0x98765432;
-    }
-    if (ct < s_t10ms_time) {    // hi matagi
-        ct += 24 * 60 * 60 * 100;
-        if (ct < s_t10ms_time) {
-            ct = s_t10ms_time;
-            //return 0x76543210;
-        }
-    }
-    s_t10ms_time  = ct;
-    s_t10ms_count = ct - s_t10ms_time_start;
-    return s_t10ms_count * 10;
-}
-
-static inline void t10ms_init(void) { t10ms_getMilliSec(); }
-static inline void t10ms_term(void) {}
-
-#elif defined(USE_T10MS_INTR)
-
-static volatile unsigned long s_t10ms_count = 0;
-
-static void t10ms_init(void);
-
-/** Interval timer handler.
- */
-static void interrupt t10ms_handler(void) {
-    ++s_t10ms_count;
-    _enable();
-    t10ms_init();
-}
-
-/** Timer start.
- */
-static void t10ms_init(void) {
-    union  REGS  regs;
-    struct SREGS sregs;
-    regs.h.ah = 0x02;
-    regs.w.cx = 1;    // 1 => 10ms.
-    regs.w.bx = FAR_PTR_OFF(t10ms_handler);
-    sregs.es  = FAR_PTR_SEG(t10ms_handler);
-    int86x(0x1C, &regs, &regs, &sregs);
-}
-
-/** Timer stop.
- */
-static void t10ms_term(void) {
-}
-
-/** Get milli-seconds.
- */
-static unsigned long t10ms_getMilliSec(void) {
-    return s_t10ms_count * 10;
-}
+#if defined(CONS_USE_NEAR_TEXT_BUF)
+typedef uint16_t*           tvram_buf_t;
+static long long            s_tvram_buff0[(TVRAM_W*TVRAM_MAX_H*sizeof(uint16_t) + sizeof(long long)-1 + TVRAM_ALIGN_BYTES) / sizeof(long long)];
+#else
+typedef uint16_t FAR*       tvram_buf_t;
+static tvram_buf_t          s_tvram_buff0   = NULL;
 #endif
+static tvram_buf_t          tvram_backbuf   = NULL;
+static uint8_t              s_tvram_height;
+
+static uint8_t              s_conLineFnKey; //0060:0111: 0:none 1:omote func. 2:ura func.
+static uint8_t              s_conLine;      //0060:0112:  hight-1 (if s_fnKeyLine==0, add + 1)
+static uint8_t              s_conLineMode;  //0060:0113: 0:20line 1:25line
+
+static void tvram_checkHight(void) {
+    s_conLineFnKey  = dosPeekB(MK_FAR_PTR(0x0060,0x0111));
+    s_conLine       = dosPeekB(MK_FAR_PTR(0x0060,0x0112));
+    s_conLineMode   = dosPeekB(MK_FAR_PTR(0x0060,0x0113));
+    s_tvram_height  = s_conLine + (s_conLineFnKey == 0);
+    if (s_tvram_height < 15)
+        s_tvram_height = 25;
+    else if (s_tvram_height > TVRAM_MAX_H)
+        s_tvram_height = TVRAM_MAX_H;
+}
+
+static void tvram_clear(unsigned ch, unsigned atr);
+static void tvram_flush(unsigned top, unsigned lines);
+
+
+static int tvram_init(void) {
+    if (tvram_backbuf)
+        return 1;
+
+    tvram_checkHight();
+
+ #if !defined(CONS_USE_NEAR_TEXT_BUF)
+    s_tvram_buff0 = (tvram_buf_t)_fmalloc(TVRAM_BUF_ALC_BYTES);
+    if (!s_tvram_buff0)
+        return 0;
+ #endif
+    tvram_backbuf   = ALIGNED_PTR(tvram_buf_t, s_tvram_buff0, TVRAM_ALIGN_BYTES);
+    tvram_clear(' ', (7<<5)|1); //_fmemset(tvram_backbuf, 0, TVRAM_BUF_ALC_BYTES);
+    tvram_flush(0, TVRAM_H);
+    return 1;
+}
+
+static void tvram_term(void) {
+ #if !defined(CONS_USE_NEAR_TEXT_BUF)
+    _ffree(s_tvram_buff0);
+ #endif
+    tvram_backbuf = NULL;
+}
+
+
+/** Screen refresh.
+ */
+static void tvram_flush(unsigned top, unsigned lines) {
+    unsigned start, bytes;
+
+    if (top >= TVRAM_MAX_H || lines == 0)
+        return;
+    if (lines > TVRAM_MAX_H - top)
+        lines = TVRAM_MAX_H - top;
+
+    start = top * TVRAM_W;
+    bytes = TVRAM_W * lines * sizeof(uint16_t);
+
+ #if defined(__DJGPP__)
+    dosmemput(tvram_backbuf+start                  , bytes, (unsigned long)MK_FAR_PTR(TVRAM_TXT_SEG, start));
+    dosmemput(tvram_backbuf+start+TVRAM_BUF_ATR_OFS, bytes, (unsigned long)MK_FAR_PTR(TVRAM_ATR_SEG, start));
+ #elif defined(__WATCOMC__)
+    _fmemcpy((uint16_t FAR *)MK_FAR_PTR(TVRAM_TXT_SEG, start), (tvram_backbuf+start+0                ), bytes);
+    _fmemcpy((uint16_t FAR *)MK_FAR_PTR(TVRAM_ATR_SEG, start), (tvram_backbuf+start+TVRAM_BUF_ATR_OFS), bytes);
+ #endif
+}
+
+static void tvram_flushRect(unsigned x, unsigned y, unsigned w, unsigned h) {
+    tvram_buf_t buf = tvram_backbuf;
+    unsigned    wb  = w * sizeof(uint16_t);
+    unsigned    ofs = (y * TVRAM_W + x) * sizeof(uint16_t);
+    unsigned    n;
+    for (n = 0; n < h; ++n) {
+     #if defined(__DJGPP__)
+        dosmemput(buf+ofs                  , wb, (unsigned long)MK_FAR_PTR(TVRAM_TXT_SEG, ofs));
+        dosmemput(buf+ofs+TVRAM_BUF_ATR_OFS, wb, (unsigned long)MK_FAR_PTR(TVRAM_ATR_SEG, ofs));
+     #elif defined(__WATCOMC__)
+        _fmemcpy((uint16_t FAR *)MK_FAR_PTR(TVRAM_TXT_SEG, ofs), buf+(ofs>>1)                  , wb);
+        _fmemcpy((uint16_t FAR *)MK_FAR_PTR(TVRAM_ATR_SEG, ofs), buf+(ofs>>1)+TVRAM_BUF_ATR_OFS, wb);
+     #endif
+        ofs += TVRAM_W * sizeof(uint16_t);
+    }
+}
+
+#define TVRAM_BUF_SET(buf, ofs, c, a)   (buf[ofs] = (c), buf[(ofs)+TVRAM_BUF_ATR_OFS] = (a))
+
+/**
+ */
+static void tvram_clear(unsigned ch, unsigned atr) {
+    tvram_buf_t buf     = tvram_backbuf;
+    uint16_t    size    = TVRAM_W * TVRAM_H;
+    uint16_t    offset  = 0;
+    for (offset = 0; offset < size; ++offset) {
+        TVRAM_BUF_SET(buf, offset, ch, atr);
+    }
+}
 
 
 //  -   -   -   -   -   -   -   -   -   -
 //  vsync
 
-/** vblank start wait.
- */
-static void vsync_wait(void) {
-    enum { statusPort = 0xA0 };
-    while ((inp(statusPort) & 0x20)) {
-        ;
-    }
-    while (!(inp(statusPort) & 0x20)) {
-        ;
-    }
-}
+#define VSYNC_INT_VECT      0x0A      /* INT 0Ah (IRQ2)                */
+#define PIC_IMR_PORT        0x02      /* 8259A IMR (master)            */
+#define PIC_EOI_PORT        0x00      /* 8259A EOI (master)            */
+#define VSYNC_MASK_BIT      0x04
+#define VSYNC_RESTART_PORT  0x64      /* 任意書き込みで VSYNC 再許可    */
+
+
+#if defined(__FLAT__)
+typedef uint64_t    vsync_t;
+#else
+typedef uint32_t    vsync_t;
+#endif
 
 #if defined(USE_VSYNC_INTR)
 
-enum { VSYNC_INTR = 0x0a };
-static volatile uint32_t        s_vsync_count = 0;
-static void (__interrupt __far *s_vsync_handler_old)(void) = NULL;
+static volatile vsync_t     s_vsync_count       = 0;
+static volatile uint16_t    s_vsync_delay_count = 0;
+static uint16_t             s_vsync_delay       = 0;
+static uint8_t              s_imr_save          = 0;
+static intr_vect_t          s_vsync_handler_save;
+
+// AH=41h INT 18h  bit2‑3 : 0x0C -> 31 kHz, else 24 kHz
+static unsigned getGraphExtMode(void) {
+    INTR_REGS r = {0};
+    r.W.ax = 0x4100;
+    INTR(0x18, &r);
+    return r.W.ax;
+}
+
+
+/** Get vsync-counter.
+ */
+static inline cons_clock_t vsync_counterGet(void) {
+    outp(PIC_EOI_PORT      , 0x20);
+    outp(VSYNC_RESTART_PORT, 0);
+    return s_vsync_count;
+}
 
 /**
  */
-static void __interrupt __far vsync_handler(void) {
+#if defined(__DJGPP__)
+static void vsync_handler(void)
+#else
+static void __interrupt __far __loadds vsync_handler()
+#endif
+{
+    uint16_t tmp = s_vsync_delay_count + s_vsync_delay;
+    if (tmp < s_vsync_delay_count)
+        ++s_vsync_count;
     ++s_vsync_count;
-    if (s_vsync_handler_old)
-        (*s_vsync_handler_old)();
-    outp(0x64, 0);
+    s_vsync_delay_count = tmp;
+
+ #if !defined(__FLAT__)
+    if (s_vsync_handler_save)
+        (*s_vsync_handler_save)();
+ #endif
+    outp(PIC_EOI_PORT      , 0x20);
+    outp(VSYNC_RESTART_PORT, 0);
 }
 
 /** Initialize vsync-counter.
  */
 static void vsync_counterInit(void) {
-     unsigned char mask;
-    _disable();
-    mask = inp(0x02);
-    mask &= 0xFB;
-    outp(0x02, mask);
-    outp(0x64, 0);
-    _enable();
+    if ((getGraphExtMode() & 0x0C) == 0x0C)       /* 31 kHz */
+        s_vsync_delay = 13311;
+    else
+        s_vsync_delay = 0;
+    s_vsync_count = 0;
 
-    s_vsync_handler_old = _dos_getvect(VSYNC_INTR);
-    _dos_setvect(VSYNC_INTR, vsync_handler);
+    if (s_imr_save)
+        return;
+
+    s_vsync_handler_save = getvect(VSYNC_INT_VECT);
+    setvect(VSYNC_INT_VECT, vsync_handler);
+
+    _disable();
+    s_imr_save = inp(PIC_IMR_PORT);
+    outp(PIC_IMR_PORT, s_imr_save & ~VSYNC_MASK_BIT);
+    //outp(0x60, inp(0x60) | 0x10);
+    outp(PIC_EOI_PORT      , 0x20);
+    outp(VSYNC_RESTART_PORT, 0);
+    _enable();
 }
 
 /** Terminate vsync-counter.
  */
 static void vsync_counterTerm(void) {
-    if (s_vsync_handler_old) {
-        _disable();
-        _dos_setvect(VSYNC_INTR, s_vsync_handler_old);
-        _enable();
-        s_vsync_handler_old = NULL;
-    }
+    if (!s_imr_save)
+        return;
+
+    _disable();
+    //outp(0x60, inp(0x60) & ~0x10);
+    outp(PIC_IMR_PORT, inp(PIC_IMR_PORT) | VSYNC_MASK_BIT);
+    //_enable();
+
+    //_disable();
+    outp(PIC_IMR_PORT, s_imr_save);
+    outp(VSYNC_RESTART_PORT, 0);
+    _enable();
+    s_imr_save = 0;
+
+    resetvect(VSYNC_INT_VECT  , s_vsync_handler_save);
+    s_vsync_handler_save = NULL;
 }
 
-/** Get vsync-counter.
- */
-static inline cons_clock_t vsync_counterGet(void) {
-    return s_vsync_count;
-}
-
-#elif defined(USE_T10MS) || defined(USE_T10MS_INTR)
-#define vsync_counterInit()
-#define vsync_counterTerm()
-#define vsync_counterGet()  (s_t10ms_count * 3U / 5U)   // 60 / 100
 #else
-static volatile uint32_t s_vsync_count = 0;
+static volatile vsync_t      s_vsync_count = 0;
 static inline cons_clock_t vsync_counterGet(void) {
     return ++s_vsync_count;
 }
 #define vsync_counterInit()
 #define vsync_counterTerm()
+#define vsync_update()
 #endif  // USE_VSYNC_INTR
 
-#if !defined(USE_T10MS) && !defined(USE_T10MS_INTR)
-#define t10ms_init()
-#define t10ms_term()
 #define t10ms_getMilliSec()     (s_vsync_count * 1000 / 60)
-#endif
 
 
 
 // ================================================================
 
-static void consRefresh(void);
+static cons_col_t       s_cur_col   = 0;
+
+cons_clock_t            _cons_PRIVATE_tick;
+cons_clock_t            _cons_PRIVATE_clock;
+cons_key_t              _cons_PRIVATE_key;
+cons_pos_t              _cons_PRIVATE_screen_width;
+cons_pos_t              _cons_PRIVATE_screen_height;
+cons_pos_t              _cons_PRIVATE_cur_x;
+cons_pos_t              _cons_PRIVATE_cur_y;
+
+typedef struct cons_rect_t {
+    cons_pos_t  x, y;
+    cons_pos_t  w, h;
+} cons_rect_t;
+
+static cons_rect_t      text_full_rect = { 0 };
+static cons_rect_t      s_refresh_rect[CONS_REFRESH_RECT_N];
+static char             s_cons_sprintf_buf[CONS_PRINTF_BUF_SIZE];
+
+static void cons_refresh(void);
 
 /** Initialize.
  */
 int  cons_init(unsigned flags) {
     (void)flags;
+ #if defined(__DJGPP__)
+    //if (!__djgpp_nearptr_enable()) return 0;
+ #endif
+    //irq_enable();
     video_init();
-    text_show(1);
-    text_cursorSw(0);
+    text_show(0);
     //text_PFKeySw(0);
-    if (!s_textBuf) {
-      #if !defined(CONS_USE_NEAR_TEXT_BUF)
-        size_t size = TEXT_BUF_BYTES;
-        s_textBuf   = (uint16_t __far*)_fmalloc(2 * size * sizeof(uint16_t));
-        s_attrBuf   = s_textBuf + size;
-        _fmemset(s_textBuf, 0, 2 * size * sizeof(uint16_t));
-      #else
-        s_textBuf = (uint16_t*)(((uintptr_t)s_buff + 15) & ~15);
-        s_attrBuf = s_textBuf + TEXT_BUF_W * TEXT_BUF_H;
-      #endif
-    }
-    _fmemset(TEXT_VRAM, 0, TEXT_BUF_BYTES);
-    _fmemset(ATTR_VRAM, 0, TEXT_BUF_BYTES);
+    if (tvram_init() == 0)
+        return 0;
+
+    _cons_PRIVATE_screen_width  = TVRAM_W;
+    _cons_PRIVATE_screen_height = TVRAM_H;
+    text_full_rect.w            = TVRAM_W;
+    text_full_rect.h            = TVRAM_H;
+
     vsync_counterInit();
-    t10ms_init();
     cons_setcolor(7);
     cons_clear();
-    consRefresh();
+    text_cursorSw(0);
+    text_show(1);
     return 1;
 }
 
 /** Terminate.
  */
 void cons_term(void) {
-    t10ms_term();
     vsync_counterTerm();
     s_refresh_rect[0] = text_full_rect;
     cons_clear();
-    consRefresh();
+    cons_refresh();
     text_cursorSw(1);
-    //text_PFKeySw(1);
-  #if !defined(CONS_USE_NEAR_TEXT_BUF)
-    _ffree(s_textBuf);
+    tvram_term();
+    //irq_disable();
+  #if defined(__DJGPP__)
+    //__djgpp_nearptr_disable();
   #endif
-    s_textBuf = NULL;
-    s_attrBuf = NULL;
 }
 
 /** update-begin
  */
 void cons_updateBegin(void) {
     memset(s_refresh_rect, 0, sizeof(s_refresh_rect));
-    s_refresh_rect[0] = text_full_rect;
+    s_refresh_rect[0]     = text_full_rect;
 
     cons_setxy(0,0);
     cons_setcolor(7);
@@ -434,21 +606,13 @@ void cons_updateBegin(void) {
  */
 void cons_updateEnd(void) {
     vsync_wait();
-    consRefresh();
+    cons_refresh();
 }
 
 /** Screen clear.
  */
 void cons_clear(void) {
-    unsigned short offset = 0;
-    unsigned x, y;
-    for (y = 0; y < TEXT_BUF_H; ++y) {
-        for (x = 0; x < TEXT_BUF_W; ++x) {
-            s_textBuf[offset] = ' ';
-            s_attrBuf[offset] = s_cur_col;
-            ++offset;
-        }
-    }
+    tvram_clear(' ', s_cur_col);
     cons_setxy(0, 0);
 }
 
@@ -466,15 +630,13 @@ void cons_setRefreshRect(uint8_t no, cons_pos_t x, cons_pos_t y, cons_pos_t w, c
 
 /** Screen refresh.
  */
-static void consRefresh(void) {
+static void cons_refresh(void) {
     cons_rect_t const* rt = &s_refresh_rect[0];
-    if (rt->w==TEXT_BUF_W && rt->h==TEXT_BUF_H && rt->x==0 && rt->y==0) {
-        _fmemcpy(TEXT_VRAM, s_textBuf, TEXT_BUF_BYTES);
-        _fmemcpy(ATTR_VRAM, s_attrBuf, TEXT_BUF_BYTES);
+    if (rt->w==TVRAM_W && rt->x==0) {
+        tvram_flush(rt->y, rt->h);
     } else {
         cons_rect_t const* rt_e = &s_refresh_rect[CONS_REFRESH_RECT_N];
         do {
-            unsigned n, ofs, bytes;
             int      x,y,w,h;
             x  = rt->x;
             w  = rt->w;
@@ -483,8 +645,8 @@ static void consRefresh(void) {
                 x = 0;
                 if (w <= 0)
                     continue;
-            } else if (x + w > TEXT_BUF_W) {
-                w = TEXT_BUF_W - x;
+            } else if (x + w > TVRAM_W) {
+                w = TVRAM_W - x;
                 if (w <= 0)
                     continue;
             }
@@ -495,18 +657,12 @@ static void consRefresh(void) {
                 y = 0;
                 if (h <= 0)
                     continue;
-            } else if (y + h > TEXT_BUF_H) {
-                h = TEXT_BUF_H - y;
+            } else if (y + h > TVRAM_H) {
+                h = TVRAM_H - y;
                 if (h <= 0)
                     continue;
             }
-            bytes = w * sizeof(uint16_t);
-            ofs   = y * TEXT_BUF_W + x;
-            for (n = 0; n < h; ++n) {
-                _fmemcpy(&TEXT_VRAM[ofs], &s_textBuf[ofs], bytes);
-                _fmemcpy(&ATTR_VRAM[ofs], &s_attrBuf[ofs], bytes);
-                ofs += TEXT_BUF_W;
-            }
+            tvram_flushRect(x, y, w, h);
         } while (++rt < rt_e);
     }
 }
@@ -541,7 +697,6 @@ void cons_xyputs(cons_pos_t x, cons_pos_t y, char const* s) {
     cons_puts(s);
 }
 
-#if defined(CONS_USE_SJIS)
 #define iskanji(c)  (((c)>=0x81 && (c)<=0x9f) || ((c)>=0xE0 && (c)<=0xfc))
 
 /** SJIS->JIS
@@ -563,24 +718,22 @@ static uint16_t sjisToJis(uint16_t ax) {
     al -= 0x1f;
     return (ah << 8) | al;
 }
-#endif
 
 /** Put string.
  */
 void cons_puts(char const* str) {
-    uint8_t  const* s = (uint8_t const*)str;
-    uint16_t offs     = (_cons_PRIVATE_cur_y*TEXT_BUF_W+_cons_PRIVATE_cur_x);
+    tvram_buf_t     buf = tvram_backbuf;
+    uint16_t        ofs = (_cons_PRIVATE_cur_y*TVRAM_W+_cons_PRIVATE_cur_x);
+    uint8_t  const* s   = (uint8_t const*)str;
 
     while (*s) {
-     #if defined(CONS_USE_SJIS)
         uint8_t c = *s++;
         if (iskanji(c) == 0) {
             if (c == '\n') {
-                _cons_PRIVATE_cur_x = TEXT_BUF_W;
+                _cons_PRIVATE_cur_x = TVRAM_W;
             } else {
-                s_textBuf[offs] = c;
-                s_attrBuf[offs] = s_cur_col;
-                ++offs;
+                TVRAM_BUF_SET(buf, ofs, c, s_cur_col);
+                ++ofs;
                 ++_cons_PRIVATE_cur_x;
             }
         } else if (*s) {
@@ -590,31 +743,19 @@ void cons_puts(char const* str) {
             uint8_t  al   = (uint8_t)(jis >> 8);
             uint16_t ax;
             al -= 0x20;
-            ax = (ah << 8) | (al);
-            s_textBuf[offs+0] = ax;
-            s_textBuf[offs+1] = ax | 0x8080;
-            s_attrBuf[offs+0] = s_cur_col;
-            s_attrBuf[offs+1] = s_cur_col;
-            offs += 2;
+            ax  = (ah << 8) | (al);
+            TVRAM_BUF_SET(buf, ofs, ax       , s_cur_col);
+            ++ofs;
+            TVRAM_BUF_SET(buf, ofs, ax|0x8080, s_cur_col);
+            ++ofs;
             _cons_PRIVATE_cur_x += 2;
         }
-        if (_cons_PRIVATE_cur_x >= TEXT_BUF_W) {
+        if (_cons_PRIVATE_cur_x >= TVRAM_W) {
             _cons_PRIVATE_cur_x = 0;
-            if (++_cons_PRIVATE_cur_y >= TEXT_BUF_H)
+            if (++_cons_PRIVATE_cur_y >= TVRAM_H)
                 _cons_PRIVATE_cur_y = 0;
-            offs = (_cons_PRIVATE_cur_y * TEXT_BUF_W + _cons_PRIVATE_cur_x);
+            ofs  = (_cons_PRIVATE_cur_y * TVRAM_W + _cons_PRIVATE_cur_x);
         }
-      #else
-        uint8_t c = *s++;
-        if (c == '\n') {
-            _cons_PRIVATE_cur_x = TEXT_BUF_W;
-        } else {
-            s_textBuf[offs] = c;
-            s_attrBuf[offs] = s_cur_col;
-            ++offs;
-            ++_cons_PRIVATE_cur_x;
-        }
-      #endif
     }
 }
 

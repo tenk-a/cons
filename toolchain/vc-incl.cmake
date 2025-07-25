@@ -53,8 +53,18 @@ if(TOOLCHAIN_MSVC_VERSION VERSION_LESS "19.0")
         -Dsnprintf=_snprintf
         -Dinline=_inline
     )
+    set(TOOLCHAIN_ADD_OPTS "${TOOLCHAIN_ADD_OPTS}"
+        "-U_MBCS"
+        "-DUNICODE" "-D_UNICODE"
+        CACHE STRING "TOOLCHAIN_ADD_OPTS"
+    )
 else()
-  add_compile_definitions(-DCONS_USE_UNICODE)
+  set(TOOLCHAIN_ADD_OPTS "${TOOLCHAIN_ADD_OPTS}"
+      "-U_MBCS"
+      "-UUNICODE" "-U_UNICODE"
+      "-DCONS_USE_UNICODE"
+      CACHE STRING "TOOLCHAIN_ADD_OPTS"
+  )
 endif()
 
 # win32 libraries.
@@ -62,8 +72,3 @@ set(TOOLCHAIN_ADD_LIBS "kernel32;user32;shell32;advapi32" CACHE STRING "Default 
 
 # Use Windows UTF-8 API (windows10 1903 or later)
 set(TOOLCHAIN_ADD_SRCS "${CMAKE_CURRENT_LIST_DIR}/../src/win/ActiveCodePageUTF8.manifest" CACHE STRING "TOOLCHAIN_ADD_SRCS")
-set(TOOLCHAIN_ADD_OPTS
-    "-U_MBCS"
-    "-DUNICODE" "-D_UNICODE"
-    CACHE STRING "TOOLCHAIN_ADD_OPTS"
-)
