@@ -193,7 +193,16 @@ static void vsync_wait(void) {
     }
 }
 
-#if 0
+static uint8_t s_textLineFnKey; //0060:0111: 0:none 1:omote func. 2:ura func.
+static uint8_t s_textLine;      //0060:0112:  hight-1 (if s_fnKeyLine==0, add + 1)
+static uint8_t s_textLineMode;  //0060:0113: 0:20line 1:25line
+
+static void text_lineCheck(void) {
+    s_textLineFnKey  = dosPeekB(MK_FAR_PTR(0x0060,0x0111));
+    s_textLine       = dosPeekB(MK_FAR_PTR(0x0060,0x0112));
+    s_textLineMode   = dosPeekB(MK_FAR_PTR(0x0060,0x0113));
+}
+
 static void text_conPut(char const* s) {
     INTR_REGS regs = {0};
     regs.h.ah = 0x06;
@@ -201,9 +210,8 @@ static void text_conPut(char const* s) {
         INTR(0x21, &regs);
     }
 }
-//static void text_PFKeySw(uint8_t f) {text_ConPut((f)?"\[[>1l":"\[[>1h");}
-//static void text_cls() { text_ConPut("\[[2J"); }
-#endif
+static void text_PFKeySw(uint8_t f) {text_conPut((f)?"\x1b[>1l":"\x1b[>1h");}
+static void text_cls() { text_conPut("\x1b[2J"); }
 
 
 //  -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -
@@ -301,15 +309,9 @@ static tvram_buf_t          s_tvram_buff0   = NULL;
 static tvram_buf_t          tvram_backbuf   = NULL;
 static uint8_t              s_tvram_height;
 
-static uint8_t              s_conLineFnKey; //0060:0111: 0:none 1:omote func. 2:ura func.
-static uint8_t              s_conLine;      //0060:0112:  hight-1 (if s_fnKeyLine==0, add + 1)
-static uint8_t              s_conLineMode;  //0060:0113: 0:20line 1:25line
-
-static void tvram_checkHight(void) {
-    s_conLineFnKey  = dosPeekB(MK_FAR_PTR(0x0060,0x0111));
-    s_conLine       = dosPeekB(MK_FAR_PTR(0x0060,0x0112));
-    s_conLineMode   = dosPeekB(MK_FAR_PTR(0x0060,0x0113));
-    s_tvram_height  = s_conLine + (s_conLineFnKey == 0);
+static void tvram_checkHeight(void) {
+    text_lineCheck();
+    s_tvram_height  = s_textLine + (s_textLineFnKey == 0);
     if (s_tvram_height < 15)
         s_tvram_height = 25;
     else if (s_tvram_height > TVRAM_MAX_H)
@@ -324,7 +326,7 @@ static int tvram_init(void) {
     if (tvram_backbuf)
         return 1;
 
-    tvram_checkHight();
+    tvram_checkHeight();
 
  #if !defined(CONS_USE_NEAR_TEXT_BUF)
     s_tvram_buff0 = (tvram_buf_t)_fmalloc(TVRAM_BUF_ALC_BYTES);
@@ -540,6 +542,7 @@ typedef struct cons_rect_t {
 static cons_rect_t      text_full_rect = { 0 };
 static cons_rect_t      s_refresh_rect[CONS_REFRESH_RECT_N];
 static char             s_cons_sprintf_buf[CONS_PRINTF_BUF_SIZE];
+static char             s_has_fnLine   = 0;
 
 static void cons_refresh(void);
 
@@ -550,13 +553,16 @@ int  cons_init(unsigned flags) {
  #if defined(__DJGPP__)
     //if (!__djgpp_nearptr_enable()) return 0;
  #endif
+    text_cls();
+    text_lineCheck();
+    s_has_fnLine = s_textLineFnKey;
+
     //irq_enable();
     video_init();
     text_show(0);
-    //text_PFKeySw(0);
+    text_PFKeySw(0);
     if (tvram_init() == 0)
         return 0;
-
     _cons_PRIVATE_screen_width  = TVRAM_W;
     _cons_PRIVATE_screen_height = TVRAM_H;
     text_full_rect.w            = TVRAM_W;
@@ -577,8 +583,9 @@ void cons_term(void) {
     s_refresh_rect[0] = text_full_rect;
     cons_clear();
     cons_refresh();
-    text_cursorSw(1);
     tvram_term();
+    text_cursorSw(1);
+    text_PFKeySw(s_has_fnLine);
     //irq_disable();
   #if defined(__DJGPP__)
     //__djgpp_nearptr_disable();
