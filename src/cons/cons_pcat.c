@@ -6,39 +6,13 @@
  *  @license Boost Software License - Version 1.0
  */
 #include "cons_pcat.h"
-#include <i86.h>
-#include <dos.h>
-#include <conio.h>
-#include <stdint.h>
+#include "dos_wrap.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <malloc.h>
 #include <stdarg.h>
 #include <time.h>
 #include <assert.h>
-
-#if __STDC_VERSION__ >= 199901L || __cplusplus >= 201103L
- #include <stdint.h>
- #if !defined(__cplusplus)
-  #include <stdbool.h>
- #endif
-#else
-typedef unsigned char   uint8_t;
-typedef unsigned short  uint16_t;
-typedef unsigned char   bool;
-#endif
-
-#if defined __FLAT__
-#undef __far
-#define __far
-#define MK_FAR_PTR(a,b)     ((a << 4) + (b))
-#define _fmalloc            malloc
-#define _ffree              free
-#define int86               int386
-#else
-#define MK_FAR_PTR(a,b)     (((uint32_t)(a) << 16) | (b))
-#endif
 
 cons_clock_t _cons_PRIVATE_clock;
 cons_clock_t _cons_PRIVATE_tick;
@@ -56,8 +30,8 @@ typedef struct CursorInfo {
 } CursorInfo;
 static CursorInfo s_cursorInfo;
 
-static uint16_t __far* s_textVram = NULL;
-static uint16_t __far* s_textBuf  = NULL;
+static uint16_t FAR* s_textVram = NULL;
+static uint16_t FAR* s_textBuf  = NULL;
 
 static cons_clock_t s_start_clock;
 static uint8_t  s_saveVideoMode;
@@ -77,68 +51,68 @@ static cons_rect_t  s_refresh_rect[CONS_REFRESH_RECT_N];
 /** Get video mode
  */
 static uint8_t getVideoMode() {
-    union REGS regs;
-    regs.h.ah = 0x0F;
-    int86(0x10, &regs, &regs);
-    return regs.h.al;
+    union REGS r;
+    r.h.ah = 0x0F;
+    int86(0x10, &r, &r);
+    return r.h.al;
 }
 
 /** Set video mode.
  */
 static void setVideoMode(uint8_t mode) {
-    union REGS regs;
-    regs.h.ah = 0x00;
-    regs.h.al = mode;
-    int86(0x10, &regs, &regs);
+    union REGS r;
+    r.h.ah = 0x00;
+    r.h.al = mode;
+    int86(0x10, &r, &r);
 }
 
 /** Get cursor state.
  */
 static void getCursorInfo(CursorInfo* cursorInfo) {
-    union REGS regs;
-    regs.h.ah = 0x03;
-    regs.h.bh = 0x00;  // current page.
-    int86(0x10, &regs, &regs);
-    cursorInfo->startScanLine = regs.h.ch;
-    cursorInfo->endScanLine   = regs.h.cl;
-    cursorInfo->cursorVisible = (regs.h.ch == 0x20) ? 0 : 1;
+    union REGS r;
+    r.h.ah = 0x03;
+    r.h.bh = 0x00;  // current page.
+    int86(0x10, &r, &r);
+    cursorInfo->startScanLine = r.h.ch;
+    cursorInfo->endScanLine   = r.h.cl;
+    cursorInfo->cursorVisible = (r.h.ch == 0x20) ? 0 : 1;
 }
 
 /** Hide cursor.
  */
 static void hideCursor() {
-    union REGS regs;
-    regs.h.ah = 0x01;
-    regs.w.cx = 0x2000;
-    int86(0x10, &regs, &regs);
+    union REGS r;
+    r.h.ah = 0x01;
+    r.w.cx = 0x2000;
+    int86(0x10, &r, &r);
 }
 
 /** Show cursor.
  */
 static void showCursor(CursorInfo const* cursorInfo) {
-    union REGS regs;
-    regs.h.ah = 0x01;
-    regs.h.ch = cursorInfo->startScanLine;
-    regs.h.cl = cursorInfo->endScanLine;
-    int86(0x10, &regs, &regs);
+    union REGS r;
+    r.h.ah = 0x01;
+    r.h.ch = cursorInfo->startScanLine;
+    r.h.cl = cursorInfo->endScanLine;
+    int86(0x10, &r, &r);
 }
 
 /** Get text-screen width.
  */
 static int getScreenWidth() {
-    union REGS regs;
-    regs.h.ah = 0x0F;
-    int86(0x10, &regs, &regs);
-    return regs.h.ah;
+    union REGS r;
+    r.h.ah = 0x0F;
+    int86(0x10, &r, &r);
+    return r.h.ah;
 }
 
 /** Get text-screen height.
  */
 static int getScreenHeight() {
-    union REGS regs;
-    regs.w.ax = 0x1130;
-    int86(0x10, &regs, &regs);
-    return regs.h.dl;
+    union REGS r;
+    r.w.ax = 0x1130;
+    int86(0x10, &r, &r);
+    return r.h.dl;
 }
 
 static void updateWidthHeight() {
@@ -153,43 +127,43 @@ static void updateWidthHeight() {
     }
 }
 
-static void setBlinkMode(bool sw) {
-    union REGS regs;
-    regs.w.ax = 0x1003;
-    regs.w.bx = sw;
-    int86(0x10, &regs, &regs);
+static void setBlinkMode(uint8_t sw) {
+    union REGS r;
+    r.w.ax = 0x1003;
+    r.w.bx = sw;
+    int86(0x10, &r, &r);
 }
 
 /** Is a key pressed?
  */
-static bool kbHit() {
-    union REGS regs;
-    regs.h.ah = 0x0B; // Check Standard Input Status
-    intdos(&regs, &regs);
-    return regs.h.al != 0;
+static uint8_t kbHit() {
+    union REGS r;
+    r.h.ah = 0x0B; // Check Standard Input Status
+    intdos(&r, &r);
+    return r.h.al != 0;
 }
 
 /** One key input
  */
 static uint16_t getCh() {
-    union REGS regs;
-    regs.h.ah = 0x00;
-    int86(0x16, &regs, &regs);
-    if (regs.h.al == 0 || regs.h.al == 0xE0) {
-        return (0xE000 | regs.h.ah);
+    union REGS r;
+    r.h.ah = 0x00;
+    int86(0x16, &r, &r);
+    if (r.h.al == 0 || r.h.al == 0xE0) {
+        return (0xE000 | r.h.ah);
     }
-    return regs.h.al;
+    return r.h.al;
 }
 
 #if 0 //!defined __FLAT__
-static uint16_t __far* getTextVramAddr(void) {
-    union  REGS  regs;
+static uint16_t FAR* getTextVramAddr(void) {
+    union  REGS  r;
     struct SREGS sregs;
-    regs.w.ax = 0xFE00;
-    regs.w.di = (uint16_t)s_textVram;
+    r.w.ax = 0xFE00;
+    r.w.di = (uint16_t)s_textVram;
     sregs.es  = (uint16_t)((uint32_t)s_textVram >> 16);
-    int86x(0x10, &regs, &regs, &sregs);
-    return (regs.x.cflag) ? NULL : (uint16_t __far*)MK_FAR_PTR(sregs.es, regs.w.di);
+    int86x(0x10, &r, &r, &sregs);
+    return (r.x.cflag) ? NULL : (uint16_t FAR*)MK_FAR_PTR(sregs.es, r.w.di);
 }
 #endif
 
@@ -200,12 +174,12 @@ static uint16_t __far* getTextVramAddr(void) {
 static void consRefresh() {
     updateWidthHeight();
     if (s_textVramW == s_textBufW && s_textVramH == s_textBufH) {
-        _fmemcpy(s_textVram, s_textBuf, s_textVramW * s_textVramH * sizeof(uint16_t));
+        FAR_MEMCPY(s_textVram, s_textBuf, s_textVramW * s_textVramH * sizeof(uint16_t));
     } else {
         unsigned dofs = 0, sofs = 0, y;
         unsigned w = s_textBufW < s_textVramW ? s_textBufW : s_textVramW;
         for (y = 0; y < s_textBufH; ++y) {
-            _fmemcpy(&s_textVram[dofs], &s_textBuf[sofs], w * sizeof(uint16_t));
+            FAR_MEMCPY(&s_textVram[dofs], &s_textBuf[sofs], w * sizeof(uint16_t));
             dofs += s_textVramW;
             sofs += s_textBufW;
         }
@@ -221,7 +195,7 @@ static void consRefresh(void) {
     if (rt->w==s_textBufW && rt->h==s_textBufH && rt->x==0 && rt->y==0
         && s_textVramW == s_textBufW && s_textVramH == s_textBufH
     ) {
-        _fmemcpy(s_textVram, s_textBuf, s_textBufW * s_textBufH * sizeof(uint16_t));
+        FAR_MEMCPY(s_textVram, s_textBuf, s_textBufW * s_textBufH * sizeof(uint16_t));
     } else {
         cons_rect_t const* rt_e = &s_refresh_rect[CONS_REFRESH_RECT_N];
         do {
@@ -255,7 +229,7 @@ static void consRefresh(void) {
             sofs  = y * s_textBufW  + x;
             dofs  = y * s_textVramW + x;
             for (n = 0; n < h; ++n) {
-                _fmemcpy(&s_textVram[dofs], &s_textBuf[sofs], bytes);
+                FAR_MEMCPY(&s_textVram[dofs], &s_textBuf[sofs], bytes);
                 sofs += s_textBufW;
                 dofs += s_textVramW;
             }
@@ -294,19 +268,19 @@ int cons_init(unsigned flags) {
 
     getCursorInfo(&s_cursorInfo);
  #if 1 //defined __FLAT__
-    s_textVram      = (uint16_t __far*)MK_FAR_PTR(0xB800,0x0000);
+    s_textVram      = (uint16_t FAR*)MK_FAR_PTR(0xB800,0x0000);
  #else
     s_dosv          = 1;
     s_textVram      = getTextVramAddr();
     if (s_textVram == NULL) {
-        s_textVram  = (uint16_t __far*)MK_FAR_PTR(0xB800,0x0000);
+        s_textVram  = (uint16_t FAR*)MK_FAR_PTR(0xB800,0x0000);
         s_dosv      = 0;
     }
  #endif
     updateWidthHeight();
     if (!s_textBuf) {
         size_t bytes = s_textBufW * s_textBufH * sizeof(uint16_t);
-        s_textBuf    = (uint16_t __far*)_fmalloc(bytes);
+        s_textBuf    = (uint16_t FAR*)FAR_MALLOC(bytes);
     }
     _cons_PRIVATE_col   = CONS_COL_DEFAULT; // white
     setBlinkMode(0);
@@ -327,7 +301,7 @@ void cons_term(void) {
     consRefresh();
     if (s_cursorInfo.cursorVisible)
         showCursor(&s_cursorInfo);
-    _ffree(s_textBuf);
+    FAR_FREE(s_textBuf);
     s_textBuf = NULL;
     setVideoMode(s_saveVideoMode);
 }

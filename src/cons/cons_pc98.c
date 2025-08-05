@@ -6,151 +6,40 @@
  *  @license Boost Software License - Version 1.0
  */
 #include "cons_pc98.h"
-
-#include <stddef.h>
-#include <stdint.h>
-
-#if defined(__WATCOMC__)
- #define __WATCOM_PC98__
- #include <bios.h>
- #include <i86.h>
-#endif
-
-#if defined(__DJGPP__)
- #ifndef __FLAT__
-  #define __FLAT__
- #endif
- #include <dpmi.h>
- #include <go32.h>
- #include <sys/nearptr.h>
- #include <sys/movedata.h>
-#endif
-
-#include <dos.h>
-#include <conio.h>
+#include "dos_wrap.h"
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <malloc.h>
-#include <stdarg.h>
-#include <time.h>
 #include <assert.h>
+#include <stdarg.h>
 
 #define DPRINTF(...)
 //#define DPRINTF(...)      do { printf(__VA_ARGS__); fflush(stdout); } while (0)
 #define DBG_FL()            DPRINTF("%s %d\n", __FILE__, __LINE__)
 
-
 #if defined(__DJGPP__)
  //#define USE_VSYNC_INTR
-#elif defined(__FLAT__)
+ #define irq_disable()   __dpmi_get_and_disable_virtual_interrupt_state()
+ #define irq_enable()    __dpmi_get_and_enable_virtual_interrupt_state()
+#elif 0 //defined(__FLAT__) && defined(__WATCOM__)
  #define USE_VSYNC_INTR
-#else
+ static int irq_disable(void) {
+    union REGS r = {0};
+    r.w.ax = 0x0900;
+    int86(0x31, &r, &r);
+    return r.h.al;
+ }
+ static int irq_enable(void) {
+    union REGS r = {0};
+    r.w.ax = 0x0901;
+    int86(0x31, &r, &r);
+    return r.h.al;
+ }
+#else   // watcom
  #define USE_VSYNC_INTR
-#endif
-
-
-#if defined(__FLAT__)   // 32bit DOS
- #define FAR
- #define MK_FAR_PTR(a,b)    (((a) << 4) | (b))
- #define FAR_PTR_SEG(p)     ((uint16_t)((uint64_t)(void FAR*)(p) >> 32))
- #define FAR_PTR_OFF(p)     ((uint32_t)((uint64_t)(p)))
- #define _fmalloc           malloc
- #define _ffree             free
- #define _fmemcpy           memcpy
- #define _fmemset           memset
- #define ALIGNED_PTR(t,p,a) ((t)(((uintptr_t)(p) + (a) - 1) & ~((a) - 1)))
- #if defined(__WATCOMC__)
-  #define W                 w
-  #define int86             int386
-  #define int86x            int386x
-  #define INTR_REGS         union REGS         // union REGPACK
-  #define INTR(n,r)         int86((n),(r),(r)) // intr((n), (r))
-  //extern uint8_t          __isPC98;          // watcom
-  #define dosPeekB(fp)      (*(uint8_t*)(fp))
- #elif defined(__DJGPP__)
-  #define __far
-  #define W                 x
-  #define INTR_REGS         union REGS         //__dpmi_regs
-  #define INTR(n,r)         int86((n),(r),(r)) //__dpmi_int((n), (r))
-  static inline uint8_t dosPeekB(uint32_t dosptr) {
-    uint8_t b;
-    dosmemget(dosptr, sizeof(uint8_t), &b);
-    return b;
-  }
- #endif
- #if !defined(CONS_USE_NEAR_TEXT_BUF)
+ #define irq_enable()
+ #define irq_disable()
+ #if !defined(CONS_USE_NEAR_TEXT_BUF) && defined(__FLAT__)
   #define CONS_USE_NEAR_TEXT_BUF
  #endif
-#else  // 16bit DOS
- #define FAR                __far
- #define MK_FAR_PTR(a,b)    (((uint32_t)(a) << 16) | (b))
- #define FAR_PTR_SEG(p)     ((uint16_t)((uint32_t)(void FAR*)(p) >> 16))
- #define FAR_PTR_OFF(p)     ((uint16_t)((uint32_t)(p)))
- #define INTR_REGS          union REGS
- #define INTR(n,r)          int86((n),(r), (r))
- #define W                  w
- #define ALIGNED_PTR(t,p,a) ((t)(((uint32_t)(p) + (a) - 1) & ~((a) - 1)))
- #undef  __loadds
- #define __loadds
- #define dosPeekB(fp)       (*(uint8_t __far*)(fp))
-#endif
-
-
-//  -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -
-
-#if defined(__DJGPP__)
-
-typedef __dpmi_paddr    intr_vect_t;
-static intr_vect_t getvect(uint8_t vec) {
-    intr_vect_t vect = {0,0};
-    __dpmi_get_protected_mode_interrupt_vector(vec, &vect);
-    return vect;
-}
-static int resetvect(uint8_t vec, intr_vect_t vect) {
-    if (vect.selector | vect.offset32)
-        return __dpmi_set_protected_mode_interrupt_vector(vec, &vect);
-    return -1;
-}
-static int setvect(uint8_t vec, void (*handler)(void)) {
-    intr_vect_t vect;
-    vect.selector = _go32_my_cs();
-    vect.offset32 = (uintptr_t)handler;
-    return __dpmi_set_protected_mode_interrupt_vector(vec, &vect);
-}
-#define irq_disable()   __dpmi_get_and_disable_virtual_interrupt_state()
-#define irq_enable()    __dpmi_get_and_enable_virtual_interrupt_state()
-
-#elif defined(__FLAT__) && defined(__WATCOM__)
-
-typedef void (__interrupt __far *intr_vect_t)();
-#define getvect(n)      _dos_getvect(n)
-#define resetvect(n,f)  do { if (f) _dos_setvect((n),(f)); } while (0)
-#define setvect(n,f)    _dos_setvect((n), (f))
-#if 0
-static int irq_disable(void) {
-    INTR_REGS r = {0};
-    r.W.ax = 0x0900;
-    INTR(0x31, &r);
-    return r.h.al;
-}
-static int irq_enable(void) {
-    INTR_REGS r = {0};
-    r.W.ax = 0x0901;
-    INTR(0x31, &r);
-    return r.h.al;
-}
-#else
-#define irq_enable()
-#define irq_disable()
-#endif
-#else   // watcom dos16
-typedef void (__interrupt __far *intr_vect_t)();
-#define getvect(n)      _dos_getvect(n)
-#define resetvect(n,f)  do { if (f) _dos_setvect((n),(f)); } while (0)
-#define setvect(n,f)    _dos_setvect((n), (f))
-#define irq_enable()
-#define irq_disable()
 #endif
 
 
@@ -159,37 +48,41 @@ typedef void (__interrupt __far *intr_vect_t)();
 /** Initialize video.
  */
 static void video_init() {
-    INTR_REGS regs = {0};
-    regs.h.ah = 0x03;
-    INTR(0x18, &regs);
+    union REGS r = {0};
+    r.h.ah = 0x03;
+    int86(0x18, &r, &r);
 }
 
 /** Show/hide text.
  */
 static void text_show(uint8_t flg) {
-    INTR_REGS regs = {0};
-    regs.h.ah = (flg) ? 0x0c : 0x0d;
-    INTR(0x18, &regs);
+    union REGS r = {0};
+    r.h.ah = (flg) ? 0x0c : 0x0d;
+    int86(0x18, &r, &r);
 }
 
 /** Show/hide cursor.
  */
 static void text_cursorSw(uint8_t show) {
-    INTR_REGS regs = {0};
-    regs.h.ah = (show) ? 0x11 : 0x12;
-    INTR(0x18, &regs);
+    union REGS r = {0};
+    r.h.ah = (show) ? 0x11 : 0x12;
+    int86(0x18, &r, &r);
 }
 
 /** vblank start wait.
  */
-static void vsync_wait(void) {
+static void vsync_wait(unsigned flags) {
     enum { STATUS_PORT = 0xA0 };
 
-    while ((inp(STATUS_PORT) & 0x20)) {
-        ;
+    if (flags & 1) {
+        while ((inp(STATUS_PORT) & 0x20)) {
+            ;
+        }
     }
-    while (!(inp(STATUS_PORT) & 0x20)) {
-        ;
+    if (flags & 2) {
+        while (!(inp(STATUS_PORT) & 0x20)) {
+            ;
+        }
     }
 }
 
@@ -198,16 +91,16 @@ static uint8_t s_textLine;      //0060:0112:  hight-1 (if s_fnKeyLine==0, add + 
 static uint8_t s_textLineMode;  //0060:0113: 0:20line 1:25line
 
 static void text_lineCheck(void) {
-    s_textLineFnKey  = dosPeekB(MK_FAR_PTR(0x0060,0x0111));
-    s_textLine       = dosPeekB(MK_FAR_PTR(0x0060,0x0112));
-    s_textLineMode   = dosPeekB(MK_FAR_PTR(0x0060,0x0113));
+    s_textLineFnKey  = FAR_PEEKB(MK_FAR_PTR(0x0060,0x0111));
+    s_textLine       = FAR_PEEKB(MK_FAR_PTR(0x0060,0x0112));
+    s_textLineMode   = FAR_PEEKB(MK_FAR_PTR(0x0060,0x0113));
 }
 
 static void text_conPut(char const* s) {
-    INTR_REGS regs = {0};
-    regs.h.ah = 0x06;
-    while ((regs.h.dl = *s++) != 0) {
-        INTR(0x21, &regs);
+    union REGS r = {0};
+    r.h.ah = 0x06;
+    while ((r.h.dl = *s++) != 0) {
+        int86(0x21, &r, &r);
     }
 }
 static void text_PFKeySw(uint8_t f) {text_conPut((f)?"\x1b[>1l":"\x1b[>1h");}
@@ -220,19 +113,19 @@ static void text_cls() { text_conPut("\x1b[2J"); }
 /** Is a key pressed?
  */
 static int key_kbHit(void) {
-    INTR_REGS regs = {0};
-    regs.h.ah = 0x01;
-    INTR(0x18, &regs);
-    return regs.h.bh != 0;
+    union REGS r = {0};
+    r.h.ah = 0x01;
+    int86(0x18, &r, &r);
+    return r.h.bh != 0;
 }
 
 /**
  */
 static int key_wait(void) {
-    INTR_REGS regs = {0};
-    regs.h.ah = 0x00;
-    INTR(0x18, &regs);
-    return regs.W.ax;
+    union REGS r = {0};
+    r.h.ah = 0x00;
+    int86(0x18, &r, &r);
+    return r.w.ax;
 }
 
 /** One key input
@@ -248,38 +141,38 @@ static int key_getch(void) {
 /** Clear key buffer.
  */
 static void key_bufClr(void) {
-    INTR_REGS regs = {0};
-    regs.W.ax = 0x0cff;
-    INTR(0x21, &regs);
+    union REGS r = {0};
+    r.w.ax = 0x0cff;
+    int86(0x21, &r, &r);
 }
 
 
 #if 0
 static int key_scan(void) {
-    INTR_REGS regs = {0};
-    regs.h.ah = 0x01;
+    union REGS r = {0};
+    r.h.ah = 0x01;
     //  out ax　key code data
     //  out bh  0:disable 1:enable
-    INTR(0x18, &regs);
-    if (regs.h.bh == 0)
+    int86(0x18, &r, &r);
+    if (r.h.bh == 0)
         return -1;
-    return regs.W.ax;
+    return r.w.ax;
 }
 
 //  out al  b0:SHIFT  b1:CAPS  b2:KANA  b3:GRPH  b4:CTRL
 static unsigned key_shift(void) {
-    INTR_REGS regs = {0};
-    regs.h.ah = 0x02;
-    INTR(0x18, &regs);
-    return regs.h.al;
+    union REGS r = {0};
+    r.h.ah = 0x02;
+    int86(0x18, &r, &r);
+    return r.h.al;
 }
 
 static int key_sence(uint8_t keyGrp) {
-    INTR_REGS regs = {0};
-    regs.h.al = keyGrp;
-    regs.h.ah = 0x04;
-    INTR(0x18, &regs);
-    return regs.h.al;
+    union REGS r = {0};
+    r.h.al = keyGrp;
+    r.h.ah = 0x04;
+    int86(0x18, &r, &r);
+    return r.h.al;
 }
 #endif
 
@@ -329,19 +222,19 @@ static int tvram_init(void) {
     tvram_checkHeight();
 
  #if !defined(CONS_USE_NEAR_TEXT_BUF)
-    s_tvram_buff0 = (tvram_buf_t)_fmalloc(TVRAM_BUF_ALC_BYTES);
+    s_tvram_buff0 = (tvram_buf_t)FAR_MALLOC(TVRAM_BUF_ALC_BYTES);
     if (!s_tvram_buff0)
         return 0;
  #endif
-    tvram_backbuf   = ALIGNED_PTR(tvram_buf_t, s_tvram_buff0, TVRAM_ALIGN_BYTES);
-    tvram_clear(' ', (7<<5)|1); //_fmemset(tvram_backbuf, 0, TVRAM_BUF_ALC_BYTES);
+    tvram_backbuf   = FAR_ALIGN_PTR(tvram_buf_t, s_tvram_buff0, TVRAM_ALIGN_BYTES);
+    tvram_clear(' ', (7<<5)|1); //FAR_MEMSET(tvram_backbuf, 0, TVRAM_BUF_ALC_BYTES);
     tvram_flush(0, TVRAM_H);
     return 1;
 }
 
 static void tvram_term(void) {
  #if !defined(CONS_USE_NEAR_TEXT_BUF)
-    _ffree(s_tvram_buff0);
+    FAR_FREE(s_tvram_buff0);
  #endif
     tvram_backbuf = NULL;
 }
@@ -361,11 +254,11 @@ static void tvram_flush(unsigned top, unsigned lines) {
     bytes = TVRAM_W * lines * sizeof(uint16_t);
 
  #if defined(__DJGPP__)
-    dosmemput(tvram_backbuf+start                  , bytes, (unsigned long)MK_FAR_PTR(TVRAM_TXT_SEG, start));
-    dosmemput(tvram_backbuf+start+TVRAM_BUF_ATR_OFS, bytes, (unsigned long)MK_FAR_PTR(TVRAM_ATR_SEG, start));
+    dosmemput(tvram_backbuf+start                  , bytes, MK_FAR_PTR(TVRAM_TXT_SEG, start));
+    dosmemput(tvram_backbuf+start+TVRAM_BUF_ATR_OFS, bytes, MK_FAR_PTR(TVRAM_ATR_SEG, start));
  #elif defined(__WATCOMC__)
-    _fmemcpy((uint16_t FAR *)MK_FAR_PTR(TVRAM_TXT_SEG, start), (tvram_backbuf+start+0                ), bytes);
-    _fmemcpy((uint16_t FAR *)MK_FAR_PTR(TVRAM_ATR_SEG, start), (tvram_backbuf+start+TVRAM_BUF_ATR_OFS), bytes);
+    FAR_MEMCPY((uint16_t FAR *)MK_FAR_PTR(TVRAM_TXT_SEG, start), (tvram_backbuf+start+0                ), bytes);
+    FAR_MEMCPY((uint16_t FAR *)MK_FAR_PTR(TVRAM_ATR_SEG, start), (tvram_backbuf+start+TVRAM_BUF_ATR_OFS), bytes);
  #endif
 }
 
@@ -376,11 +269,11 @@ static void tvram_flushRect(unsigned x, unsigned y, unsigned w, unsigned h) {
     unsigned    n;
     for (n = 0; n < h; ++n) {
      #if defined(__DJGPP__)
-        dosmemput(buf+ofs                  , wb, (unsigned long)MK_FAR_PTR(TVRAM_TXT_SEG, ofs));
-        dosmemput(buf+ofs+TVRAM_BUF_ATR_OFS, wb, (unsigned long)MK_FAR_PTR(TVRAM_ATR_SEG, ofs));
+        dosmemput(buf+(ofs>>1)                  , wb, MK_FAR_PTR(TVRAM_TXT_SEG, ofs));
+        dosmemput(buf+(ofs>>1)+TVRAM_BUF_ATR_OFS, wb, MK_FAR_PTR(TVRAM_ATR_SEG, ofs));
      #elif defined(__WATCOMC__)
-        _fmemcpy((uint16_t FAR *)MK_FAR_PTR(TVRAM_TXT_SEG, ofs), buf+(ofs>>1)                  , wb);
-        _fmemcpy((uint16_t FAR *)MK_FAR_PTR(TVRAM_ATR_SEG, ofs), buf+(ofs>>1)+TVRAM_BUF_ATR_OFS, wb);
+        FAR_MEMCPY((uint16_t FAR *)MK_FAR_PTR(TVRAM_TXT_SEG, ofs), buf+(ofs>>1)                  , wb);
+        FAR_MEMCPY((uint16_t FAR *)MK_FAR_PTR(TVRAM_ATR_SEG, ofs), buf+(ofs>>1)+TVRAM_BUF_ATR_OFS, wb);
      #endif
         ofs += TVRAM_W * sizeof(uint16_t);
     }
@@ -407,7 +300,7 @@ static void tvram_clear(unsigned ch, unsigned atr) {
 #define PIC_IMR_PORT        0x02      /* 8259A IMR (master)            */
 #define PIC_EOI_PORT        0x00      /* 8259A EOI (master)            */
 #define VSYNC_MASK_BIT      0x04
-#define VSYNC_RESTART_PORT  0x64      /* 任意書き込みで VSYNC 再許可    */
+#define VSYNC_RESTART_PORT  0x64
 
 
 #if defined(__FLAT__)
@@ -422,14 +315,14 @@ static volatile vsync_t     s_vsync_count       = 0;
 static volatile uint16_t    s_vsync_delay_count = 0;
 static uint16_t             s_vsync_delay       = 0;
 static uint8_t              s_imr_save          = 0;
-static intr_vect_t          s_vsync_handler_save;
+static FAR_VECT_ADR         s_vsync_handler_save;
 
 // AH=41h INT 18h  bit2‑3 : 0x0C -> 31 kHz, else 24 kHz
 static unsigned getGraphExtMode(void) {
-    INTR_REGS r = {0};
-    r.W.ax = 0x4100;
-    INTR(0x18, &r);
-    return r.W.ax;
+    union REGS r = {0};
+    r.w.ax = 0x4100;
+    int86(0x18, &r, &r);
+    return r.w.ax;
 }
 
 
@@ -475,8 +368,8 @@ static void vsync_counterInit(void) {
     if (s_imr_save)
         return;
 
-    s_vsync_handler_save = getvect(VSYNC_INT_VECT);
-    setvect(VSYNC_INT_VECT, vsync_handler);
+    s_vsync_handler_save = FAR_GETVECT(VSYNC_INT_VECT);
+    FAR_SETVECT(VSYNC_INT_VECT, vsync_handler);
 
     _disable();
     s_imr_save = inp(PIC_IMR_PORT);
@@ -504,8 +397,8 @@ static void vsync_counterTerm(void) {
     _enable();
     s_imr_save = 0;
 
-    resetvect(VSYNC_INT_VECT  , s_vsync_handler_save);
-    s_vsync_handler_save = NULL;
+    FAR_RESETVECT(VSYNC_INT_VECT  , s_vsync_handler_save);
+    FAR_CLEAR_VECT_ADR(s_vsync_handler_save);
 }
 
 #else
@@ -552,12 +445,12 @@ int  cons_init(unsigned flags) {
     (void)flags;
  #if defined(__DJGPP__)
     //if (!__djgpp_nearptr_enable()) return 0;
+    //irq_enable();
  #endif
     text_cls();
     text_lineCheck();
     s_has_fnLine = s_textLineFnKey;
 
-    //irq_enable();
     video_init();
     text_show(0);
     text_PFKeySw(0);
@@ -586,8 +479,8 @@ void cons_term(void) {
     tvram_term();
     text_cursorSw(1);
     text_PFKeySw(s_has_fnLine);
-    //irq_disable();
   #if defined(__DJGPP__)
+    //irq_disable();
     //__djgpp_nearptr_disable();
   #endif
 }
@@ -612,7 +505,7 @@ void cons_updateBegin(void) {
 /** update-end
  */
 void cons_updateEnd(void) {
-    vsync_wait();
+    vsync_wait(3);
     cons_refresh();
 }
 
@@ -708,7 +601,7 @@ void cons_xyputs(cons_pos_t x, cons_pos_t y, char const* s) {
 
 /** SJIS->JIS
  */
-static uint16_t sjisToJis(uint16_t ax) {
+static inline uint16_t sjisToJis(uint16_t ax) {
     uint8_t al;
     uint8_t ah = ax >> 8;
     if (ah >= 0xa0)
