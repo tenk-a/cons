@@ -59,10 +59,10 @@
 #define CONS_TICK_TO_MSEC(tm)   ((tm) * 1000 / CONS_TICK_PER_SEC)
 #define CONS_MSEC_TO_TICK(ms)   ((ms) * CONS_TICK_PER_SEC / 1000)
 
-typedef unsigned long  cons_clock_t;
-typedef signed char    cons_pos_t;
-typedef unsigned char  cons_col_t;
-typedef unsigned short cons_key_t;
+typedef unsigned long   cons_clock_t;
+typedef signed char     cons_pos_t;
+typedef unsigned char   cons_col_t;
+typedef unsigned short  cons_key_t;
 
 int  cons_init(unsigned flags);
 void cons_term(void);

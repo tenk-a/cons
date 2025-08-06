@@ -1,4 +1,4 @@
-#set(TOOLCHAIN_NAME "djgpp-dos32" CACHE STRING "Toolchain name")
+#set(TOOLCHAIN_NAME "djgpp-pc98-dos32" CACHE STRING "Toolchain name")
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR x86)

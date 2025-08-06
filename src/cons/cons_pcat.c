@@ -138,7 +138,7 @@ static void setBlinkMode(uint8_t sw) {
  */
 static uint8_t kbHit() {
     union REGS r;
-    r.h.ah = 0x0B; // Check Standard Input Status
+    r.h.ah = 0x0B;
     intdos(&r, &r);
     return r.h.al != 0;
 }
@@ -195,7 +195,7 @@ static void consRefresh(void) {
     if (rt->w==s_textBufW && rt->h==s_textBufH && rt->x==0 && rt->y==0
         && s_textVramW == s_textBufW && s_textVramH == s_textBufH
     ) {
-        FAR_MEMCPY(s_textVram, s_textBuf, s_textBufW * s_textBufH * sizeof(uint16_t));
+        DOS_MEMPUT(s_textBuf, s_textBufW * s_textBufH * sizeof(uint16_t), s_textVram);
     } else {
         cons_rect_t const* rt_e = &s_refresh_rect[CONS_REFRESH_RECT_N];
         do {
@@ -229,7 +229,7 @@ static void consRefresh(void) {
             sofs  = y * s_textBufW  + x;
             dofs  = y * s_textVramW + x;
             for (n = 0; n < h; ++n) {
-                FAR_MEMCPY(&s_textVram[dofs], &s_textBuf[sofs], bytes);
+                DOS_MEMPUT(&s_textBuf[sofs], bytes, &s_textVram[dofs]);
                 sofs += s_textBufW;
                 dofs += s_textVramW;
             }

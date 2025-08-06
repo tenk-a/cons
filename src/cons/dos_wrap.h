@@ -1,5 +1,11 @@
-#ifndef DOS_WRAP_H_INCLUDE
-#define DOS_WRAP_H_INCLUDE
+/**
+ *  @file dos_wrap.h
+ *  @brief dos define wrapper
+ *  @date   2025-08
+ *  @license Boost Software License - Version 1.0
+ */
+#ifndef DOS_WRAP_H_
+#define DOS_WRAP_H_
 
 #include <stddef.h>
 #include <stdint.h>
@@ -40,21 +46,23 @@
  #define FAR_MEMCPY         _fmemcpy
  #define FAR_MEMSET         _fmemset
  #define FAR_ALIGN_PTR(t,p,a)  ((t)(((uint32_t)(p) + (a) - 1) & ~((a) - 1)))
- #define FAR_PEEKB(ofs)     (*(uint8_t  volatile __far*)(ofs))
- #define FAR_PEEKW(ofs)     (*(uint16_t volatile __far*)(ofs))
- #define FAR_PEEKD(ofs)     (*(uint32_t volatile __far*)(ofs))
- #define FAR_POKEB(ofs,b)   (*(uint8_t  volatile __far*)(ofs) = (b))
- #define FAR_POKEW(ofs,w)   (*(uint16_t volatile __far*)(ofs) = (w))
- #define FAR_POKWD(ofs,d)   (*(uint32_t volatile __far*)(ofs) = (d))
+ #define DOS_PEEKB(ofs)     (*(uint8_t  volatile __far*)(ofs))
+ #define DOS_PEEKW(ofs)     (*(uint16_t volatile __far*)(ofs))
+ #define DOS_PEEKD(ofs)     (*(uint32_t volatile __far*)(ofs))
+ #define DOS_POKEB(ofs,b)   (*(uint8_t  volatile __far*)(ofs) = (b))
+ #define DOS_POKEW(ofs,w)   (*(uint16_t volatile __far*)(ofs) = (w))
+ #define DOS_POKED(ofs,d)   (*(uint32_t volatile __far*)(ofs) = (d))
+ #define DOS_MEMPUT(srcptr,bytes,dosadr)    _fmemcpy((void __far*)(dosadr), (srcptr), (bytes))
+ #define DOS_MEMGET(dosadr,bytes,dstptr)    _fmemcpy(dstptr, (void __far*)(dosadr), (bytes))
  #define _W                 w
  #define INTR_REGS          union REGPACK
  #define INTR(n,r)          intr((n),(r))
  #if defined(__WATCOMC__)
-  typedef void (_interrupt __far *FAR_VECT_ADR)();
-  #define FAR_CLEAR_VECT_ADR(v) ((v) = 0)
-  #define FAR_GETVECT(n)     _dos_getvect(n)
-  #define FAR_RESETVECT(n,h) _dos_setvect((n),(h))
-  #define FAR_SETVECT(n,h)   _dos_setvect((n),(h))
+  typedef void (_interrupt __far *DOS_VECT_ADR)();
+  #define DOS_CLEAR_VECT_ADR(v) ((v) = 0)
+  #define DOS_GETVECT(n)     _dos_getvect(n)
+  #define DOS_RESETVECT(n,h) _dos_setvect((n),(h))
+  #define DOS_SETVECT(n,h)   _dos_setvect((n),(h))
  #endif
  #undef  __loadds
  #define __loadds
@@ -69,54 +77,58 @@
  #define FAR_MEMSET         memset
  #define FAR_ALIGN_PTR(t,p,a)  ((t)(((uintptr_t)(p) + (a) - 1) & ~((a) - 1)))
  #if defined(__WATCOMC__)
-  #define FAR_PEEKB(ofs)    (*(uint8_t  volatile*)(ofs))
-  #define FAR_PEEKW(ofs)    (*(uint16_t volatile*)(ofs))
-  #define FAR_PEEKD(ofs)    (*(uint32_t volatile*)(ofs))
-  #define FAR_POKEB(ofs,b)  (*(uint8_t  volatile*)(ofs) = (b))
-  #define FAR_POKEW(ofs,w)  (*(uint16_t volatile*)(ofs) = (w))
-  #define FAR_POKWD(ofs,d)  (*(uint32_t volatile*)(ofs) = (d))
+  #define DOS_PEEKB(ofs)    (*(uint8_t  volatile*)(ofs))
+  #define DOS_PEEKW(ofs)    (*(uint16_t volatile*)(ofs))
+  #define DOS_PEEKD(ofs)    (*(uint32_t volatile*)(ofs))
+  #define DOS_POKEB(ofs,b)  (*(uint8_t  volatile*)(ofs) = (b))
+  #define DOS_POKEW(ofs,w)  (*(uint16_t volatile*)(ofs) = (w))
+  #define DOS_POKED(ofs,d)  (*(uint32_t volatile*)(ofs) = (d))
+  #define DOS_MEMPUT(srcptr,bytes,dosadr)   memcpy((void*)(dosadr), (srcptr), (bytes))
+  #define DOS_MEMGET(dosadr,bytes,dstptr)   memcpy(dstptr, (void*)(dosadr), (bytes))
   #define _W                w
   #define INTR_REGS         union REGPACK
-  #define INTR(n,r)         intr((n),(r))
+  #define INTR(n,r)         intrf((n),(r))
   #define int86             int386
   #define int86x            int386x
   //extern uint8_t          __isPC98;          // watcom
-  typedef void (_interrupt __far *FAR_VECT_ADR)();
-  #define FAR_CLEAR_VECT_ADR(v) ((v) = 0)
-  #define FAR_GETVECT(n)     _dos_getvect(n)
-  #define FAR_RESETVECT(n,h) _dos_setvect((n),(h))
-  #define FAR_SETVECT(n,h)   _dos_setvect((n),(h))
+  typedef void (_interrupt __far *DOS_VECT_ADR)();
+  #define DOS_CLEAR_VECT_ADR(v) ((v) = 0)
+  #define DOS_GETVECT(n)     _dos_getvect(n)
+  #define DOS_RESETVECT(n,h) _dos_setvect((n),(h))
+  #define DOS_SETVECT(n,h)   _dos_setvect((n),(h))
  #elif defined(__DJGPP__)
   #define __far
-  #define FAR_PEEKB(ofs)    _far_peek_b((uint32_t)(ofs))
-  #define FAR_PEEKW(ofs)    _far_peek_w((uint32_t)(ofs))
-  #define FAR_PEEKD(ofs)    _far_peek_d((uint32_t)(ofs))
-  #define FAR_POKEB(ofs,b)  _far_poke_b((uint32_t)(ofs), (b))
-  #define FAR_POKEW(ofs,w)  _far_poke_w((uint32_t)(ofs), (w))
-  #define FAR_POKWD(ofs,d)  _far_poke_d((uint32_t)(ofs), (d))
+  #define DOS_PEEKB(ofs)    _far_peek_b((uint32_t)(ofs))
+  #define DOS_PEEKW(ofs)    _far_peek_w((uint32_t)(ofs))
+  #define DOS_PEEKD(ofs)    _far_peek_d((uint32_t)(ofs))
+  #define DOS_POKEB(ofs,b)  _far_poke_b((uint32_t)(ofs), (b))
+  #define DOS_POKEW(ofs,w)  _far_poke_w((uint32_t)(ofs), (w))
+  #define DOS_POKED(ofs,d)  _far_poke_d((uint32_t)(ofs), (d))
   static inline uint8_t     _far_peek_b(uint32_t dosptr) { uint8_t  b; dosmemget(dosptr, sizeof(b), &b); return b; }
   static inline uint8_t     _far_peek_w(uint32_t dosptr) { uint16_t w; dosmemget(dosptr, sizeof(w), &w); return w; }
   static inline uint8_t     _far_peek_d(uint32_t dosptr) { uint32_t d; dosmemget(dosptr, sizeof(d), &d); return d; }
   static inline void        _far_poke_b(uint32_t dosptr, uint8_t  b) { dosmemput(&b, sizeof(b), dosptr); }
   static inline void        _far_poke_w(uint32_t dosptr, uint16_t w) { dosmemput(&w, sizeof(w), dosptr); }
   static inline void        _far_poke_d(uint32_t dosptr, uint32_t d) { dosmemput(&d, sizeof(d), dosptr); }
+  #define DOS_MEMPUT(srcptr,bytes,dosadr)   dosmemput((srcptr), (bytes), (dosadr))
+  #define DOS_MEMGET(dosadr,bytes,dstptr)   dosmemput((dosadr), (bytes), (dstptr))
   #define _W                x
   #define INTR_REGS         __dpmi_regs
   #define INTR(n,r)         __dpmi_int((n),(r))
   #if 0 // sippai chu
-  typedef __dpmi_paddr      FAR_VECT_ADR;
-  #define FAR_CLEAR_VECT_ADR(vi) ((vi).offset32 = 0, (vi).selector = 0)
-  static inline FAR_VECT_ADR FAR_GETVECT(uint8_t vec) {
+  typedef __dpmi_paddr      DOS_VECT_ADR;
+  #define DOS_CLEAR_VECT_ADR(vi) ((vi).offset32 = 0, (vi).selector = 0)
+  static inline DOS_VECT_ADR DOS_GETVECT(uint8_t vec) {
     __dpmi_paddr vect = {0,0};
     __dpmi_get_protected_mode_interrupt_vector(vec, &vect);
     return vect;
   }
-  static inline int FAR_RESETVECT(uint8_t vec, FAR_VECT_ADR vect) {
+  static inline int DOS_RESETVECT(uint8_t vec, DOS_VECT_ADR vect) {
     if (vect.selector | vect.offset32)
         return __dpmi_set_protected_mode_interrupt_vector(vec, &vect);
     return -1;
   }
-  static inline int FAR_SETVECT(uint8_t vec, void (*handler)(void)) {
+  static inline int DOS_SETVECT(uint8_t vec, void (*handler)(void)) {
     __dpmi_paddr vect = { (uintptr_t)handler, _go32_my_cs() };
     return __dpmi_set_protected_mode_interrupt_vector(vec, &vect);
   }
