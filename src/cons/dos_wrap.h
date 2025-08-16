@@ -84,7 +84,7 @@
   #define DOS_POKEW(ofs,w)  (*(uint16_t volatile*)(ofs) = (w))
   #define DOS_POKED(ofs,d)  (*(uint32_t volatile*)(ofs) = (d))
   #define DOS_MEMPUT(srcptr,bytes,dosadr)   memcpy((void*)(dosadr), (srcptr), (bytes))
-  #define DOS_MEMGET(dosadr,bytes,dstptr)   memcpy(dstptr, (void*)(dosadr), (bytes))
+  #define DOS_MEMGET(dosadr,bytes,dstptr)   memcpy((dstptr), (void*)(dosadr), (bytes))
   #define _W                w
   #define INTR_REGS         union REGPACK
   #define INTR(n,r)         intrf((n),(r))
@@ -105,13 +105,13 @@
   #define DOS_POKEW(ofs,w)  _far_poke_w((uint32_t)(ofs), (w))
   #define DOS_POKED(ofs,d)  _far_poke_d((uint32_t)(ofs), (d))
   static inline uint8_t     _far_peek_b(uint32_t dosptr) { uint8_t  b; dosmemget(dosptr, sizeof(b), &b); return b; }
-  static inline uint8_t     _far_peek_w(uint32_t dosptr) { uint16_t w; dosmemget(dosptr, sizeof(w), &w); return w; }
-  static inline uint8_t     _far_peek_d(uint32_t dosptr) { uint32_t d; dosmemget(dosptr, sizeof(d), &d); return d; }
+  static inline uint16_t    _far_peek_w(uint32_t dosptr) { uint16_t w; dosmemget(dosptr, sizeof(w), &w); return w; }
+  static inline uint32_t    _far_peek_d(uint32_t dosptr) { uint32_t d; dosmemget(dosptr, sizeof(d), &d); return d; }
   static inline void        _far_poke_b(uint32_t dosptr, uint8_t  b) { dosmemput(&b, sizeof(b), dosptr); }
   static inline void        _far_poke_w(uint32_t dosptr, uint16_t w) { dosmemput(&w, sizeof(w), dosptr); }
   static inline void        _far_poke_d(uint32_t dosptr, uint32_t d) { dosmemput(&d, sizeof(d), dosptr); }
   #define DOS_MEMPUT(srcptr,bytes,dosadr)   dosmemput((srcptr), (bytes), (dosadr))
-  #define DOS_MEMGET(dosadr,bytes,dstptr)   dosmemput((dosadr), (bytes), (dstptr))
+  #define DOS_MEMGET(dosadr,bytes,dstptr)   dosmemget((dosadr), (bytes), (dstptr))
   #define _W                x
   #define INTR_REGS         __dpmi_regs
   #define INTR(n,r)         __dpmi_int((n),(r))
