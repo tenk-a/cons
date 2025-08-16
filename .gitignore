@@ -48,8 +48,10 @@ sample/*.exe
 #*
 .vscode
 bld/*
-!bld/*.bat
-!bld/*.sh
+!bld/bld.bat
+!bld/bld.sh
+!bld/all_bld.bat
+!bld/setcc.bat
 !bld/*.cmake
 bin
 toolchain/vc??-*-toolchain.cmake
