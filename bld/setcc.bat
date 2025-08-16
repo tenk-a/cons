@@ -98,10 +98,10 @@ if /i "%CcName%"=="bcc101"     goto L_BCC101
 if /i "%CcName%"=="embarcadero" goto L_EmbarcaderoC76
 if /i "%CcName%"=="embarcaderoC76" goto L_EmbarcaderoC76
 
-if /i "%CcName%"=="djgpp"      goto L_DJGPP
+if /i "%CcName%"=="djgpp"       goto L_DJGPP
 if /i "%CcName%"=="djgpp_msys2" goto L_DJGPP_MSYS2
 if /i "%CcName%"=="djgpp_mingw" goto L_DJGPP_MINGW
-if /i "%CcName%"=="djgpc98"    goto L_DJGPC98
+if /i "%CcName%"=="djgpc98"     goto L_DJGPC98
 if /i "%CcName%"=="djgpc98_msys2" goto L_DJGPP_MSYS2
 if /i "%CcName%"=="djgpc98_mingw" goto L_DJGPP_MINGW
 
@@ -151,8 +151,13 @@ rem ## vc ######################################
 
 :L_VC14
     set VcVer=vc140
+    rem set VcSdkType=8.1
+    rem set VcSdkType=10.0.14393.0
+    set VcSdkType=10.0.22621.0
     set "COMPILER=%VcVer%%CcArch%"
-    set "VS140WindowsSdk=%ProgramFiles(x86)%\Windows Kits\8.1"
+    set WindowsSdkDir=C:\Program Files (x86)\Windows Kits\10\
+    set UniversalCRTSdkDir=C:\Program Files (x86)\Windows Kits\10\
+    set WindowsSdkVersion=%VcSdkType%\
     set "VcVers_Args=%CcArch%"
     if /I not "%CcArch%"=="%CcHostArch%" set "VcVers_Args=%CcHostArch%_%CcArch%"
     if /I "%VcVers_Args%"=="x64_x86" set "VcVers_Args=x86"
@@ -160,12 +165,13 @@ rem ## vc ######################################
     set "VcRoot=%CD%"
     popd
     set "PATH=%setcc_base_path%"
-    if /I "%VcVers_Args%"=="x86"     call "%VS140COMNTOOLS%vsvars32.bat"
-    if /I "%VcVers_Args%"=="x64"     call "%VcRoot%\vc\bin\amd64\vcvars64.bat"
-    if /I "%VcVers_Args%"=="x86_x64" call "%VcRoot%\vc\bin\x86_amd64\vcvarsx86_amd64.bat"
-    if /I "%VcVers_Args%"=="x64_arm" call "%VcRoot%\vc\bin\amd64_arm\vcvarsamd64_arm.bat"
-    if /I "%VcVers_Args%"=="x86_arm" call "%VcRoot%\vc\bin\x86_arm\vcvarsx86_arm.bat"
-    set "PATH=%VS140WindowsSdk%\bin\x86;%PATH%"
+    if /I "%VcVers_Args%"=="x86"     call "%VS140COMNTOOLS%vsvars32.bat" %VcSdkType%
+    if /I "%VcVers_Args%"=="x64"     call "%VcRoot%\vc\bin\amd64\vcvars64.bat" %VcSdkType%
+    if /I "%VcVers_Args%"=="x86_x64" call "%VcRoot%\vc\bin\x86_amd64\vcvarsx86_amd64.bat" %VcSdkType%
+    if /I "%VcVers_Args%"=="x64_arm" call "%VcRoot%\vc\bin\amd64_arm\vcvarsamd64_arm.bat" %VcSdkType%
+    if /I "%VcVers_Args%"=="x86_arm" call "%VcRoot%\vc\bin\x86_arm\vcvarsx86_arm.bat" %VcSdkType%
+    if "%VcSdkType%"=="8.1" set "PATH=%ProgramFiles(x86)%\Windows Kits\%VcSdkType%\bin\x86;%PATH%"
+    set "VcSdkType="
     goto L_END
 
 :L_VC12
