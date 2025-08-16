@@ -49,16 +49,49 @@ typedef cons_pos_t      pos_t;
 
 #define PIECE_SHAPE_NUM   7     ///< ピース形状の種類数.
 
-/// ピース形状 （7種類 × 4回転） src/tool/gen_shape.cpp
-static uint16_t const piece_shapes[PIECE_SHAPE_NUM][4] = {
-    //  0       90     180     270
-    { 0x0660, 0x0660, 0x0660, 0x0660, },    // ■ O
-    { 0x0c60, 0x2640, 0x0c60, 0x2640, },    // z  Z
-    { 0x06c0, 0x4620, 0x06c0, 0x4620, },    // s  S
-    { 0x8e00, 0x6440, 0x0e20, 0x44c0, },    // ┛ J
-    { 0x2e00, 0x4460, 0x0e80, 0xc440, },    // ┗ L
-    { 0x04e0, 0x4640, 0x0e40, 0x4c40, },    // ┻ T
-    { 0x0f00, 0x2222, 0x0f00, 0x4444, },    // ┃ I
+typedef struct Cell {
+    uint8_t     x;
+    uint8_t     y;
+} Cell;
+
+/// ピース形状 （7種類 × 4回転).
+static Cell const g_piece_cells[PIECE_SHAPE_NUM][4][4] = {
+    {       // ■ O
+        { {1,1}, {2,1}, {1,2}, {2,2} },
+        { {1,1}, {2,1}, {1,2}, {2,2} },
+        { {1,1}, {2,1}, {1,2}, {2,2} },
+        { {1,1}, {2,1}, {1,2}, {2,2} },
+    }, {    // z Z
+        { {0,1}, {1,1}, {1,2}, {2,2} },
+        { {2,0}, {1,1}, {2,1}, {1,2} },
+        { {0,1}, {1,1}, {1,2}, {2,2} },
+        { {2,0}, {1,1}, {2,1}, {1,2} },
+    }, {    // s S
+        { {1,1}, {2,1}, {0,2}, {1,2} },
+        { {1,0}, {1,1}, {2,1}, {2,2} },
+        { {1,1}, {2,1}, {0,2}, {1,2} },
+        { {1,0}, {1,1}, {2,1}, {2,2} },
+    }, {    // ┛ J
+        { {0,0}, {0,1}, {1,1}, {2,1} },
+        { {1,0}, {2,0}, {1,1}, {1,2} },
+        { {0,1}, {1,1}, {2,1}, {2,2} },
+        { {1,0}, {1,1}, {0,2}, {1,2} },
+    }, {    // ┗ L
+        { {2,0}, {0,1}, {1,1}, {2,1} },
+        { {1,0}, {1,1}, {1,2}, {2,2} },
+        { {0,1}, {1,1}, {2,1}, {0,2} },
+        { {0,0}, {1,0}, {1,1}, {1,2} },
+    }, {    // ┻ T
+        { {1,1}, {0,2}, {1,2}, {2,2} },
+        { {1,0}, {1,1}, {2,1}, {1,2} },
+        { {0,1}, {1,1}, {2,1}, {1,2} },
+        { {1,0}, {0,1}, {1,1}, {1,2} },
+    }, {    // ┃ I
+        { {0,1}, {1,1}, {2,1}, {3,1} },
+        { {2,0}, {2,1}, {2,2}, {2,3} },
+        { {0,1}, {1,1}, {2,1}, {3,1} },
+        { {1,0}, {1,1}, {1,2}, {1,3} },
+    },
 };
 
 typedef struct Piece {
@@ -103,19 +136,19 @@ static void field_clear(void) {
 /// ピースを置けるか?
 ///
 static bool field_canPlacePiece(Piece const* p) {
-    uint16_t ptn = piece_shapes[p->shape][p->r];
-    pos_t    x0  = p->x, y0 = p->y;
-    uint8_t  i;
-    for (i = 0; i < 16; ++i) {
-        pos_t y = y0 + (i >> 2);
-        if (y >= 0) {
-            field_t const* field = s_field[y];
-            if (ptn & (0x8000 >> i)) {
-                pos_t x = x0 + (i &  3);
-                if (x < 0 || x >= FIELD_W || y >= FIELD_H || field[x])
-                    return 0;
-            }
-        }
+    Cell const* cell = g_piece_cells[p->shape][p->r];
+    pos_t       x0   = p->x;
+    pos_t       y0   = p->y;
+    unsigned    i;
+    for (i = 0; i < 4; ++i) {
+        pos_t x = x0 + cell[i].x;
+        pos_t y = y0 + cell[i].y;
+        if (y < 0)
+            continue;
+        if (x < 0 || x >= FIELD_W || y >= FIELD_H)
+            return 0;
+        if (s_field[y][x])
+            return 0;
     }
     return 1;
 }
@@ -123,16 +156,16 @@ static bool field_canPlacePiece(Piece const* p) {
 /// ピースの固定.
 ///
 static void field_placePiece(Piece const* p) {
-    uint16_t ptn = piece_shapes[p->shape][p->r];
-    pos_t    x0  = p->x, y0 = p->y;
-    uint8_t  i;
-    for (i = 0; i < 16; ++i) {
-        if (ptn & (0x8000 >> i)) {
-            pos_t x = x0 + (i &  3);
-            pos_t y = y0 + (i >> 2);
-            if (y >= 0 && y < FIELD_H && x >= 0 && x < FIELD_W)
-                s_field[y][x] = p->shape + 1;
-        }
+    Cell const* cell = g_piece_cells[p->shape][p->r];
+    pos_t       x0   = p->x;
+    pos_t       y0   = p->y;
+    uint8_t     v    = (uint8_t)(p->shape + 1);
+    unsigned    i;
+    for (i = 0; i < 4; ++i) {
+        pos_t x = x0 + cell[i].x;
+        pos_t y = y0 + cell[i].y;
+        if (y >= 0 && y < FIELD_H && x >= 0 && x < FIELD_W)
+            s_field[y][x] = v;
     }
 }
 
@@ -142,7 +175,8 @@ static void field_placePiece(Piece const* p) {
 /// @return 今回揃ったライン数.
 static uint8_t filed_checkReach() {
     uint8_t lines = 0;
-    pos_t   x,  y = FIELD_H;
+    pos_t   x;
+    pos_t   y     = FIELD_H;
     while (--y >= 0) {
         field_t* field = s_field[y];
         for (x = 0; x < FIELD_W; ++x) {
@@ -164,8 +198,10 @@ static uint8_t filed_checkReach() {
 /// ライン消去.
 /// @return 消去したライン数.
 static uint8_t filed_clearLines() {
-    uint8_t lines = 0;
-    pos_t   x,  y = FIELD_H, prev_y = FIELD_H;
+    uint8_t lines   = 0;
+    pos_t   x;
+    pos_t   y       = FIELD_H;
+    pos_t   prev_y  = FIELD_H;
     while (--y >= 0) {
         field_t* field = s_field[y];
         if (lines == 0)
@@ -198,7 +234,8 @@ static uint8_t filed_clearLines() {
 /// @return 消去したライン数.
 static uint8_t filed_clearLinesMoto(void) {
     uint8_t lines = 0;
-    pos_t   x,  y = FIELD_H;
+    pos_t   x;
+    pos_t,  y     = FIELD_H;
     while (--y >= 0) {
         field_t* field1 = s_field[y];
         for (x = 0; x < FIELD_W; ++x) {
@@ -234,19 +271,19 @@ typedef enum GameState {
     GAME_OVER   = 4,
 } GameState;
 
-static GameState s_cur_state  = GAME_TITLE; ///< 現在のステート.
-static GameState s_next_state = GAME_TITLE; ///< 次回のステート.
-static GameState s_prev_state = GAME_EXIT;  ///< 前回のステート.
+static GameState    s_cur_state   = GAME_TITLE; ///< 現在のステート.
+static GameState    s_next_state  = GAME_TITLE; ///< 次回のステート.
+static GameState    s_prev_state  = GAME_EXIT;  ///< 前回のステート.
 
-static cons_clock_t s_fall_time= 0;         ///< 次の落下予定時間.
-static uint_t   s_lines       = 0;          ///< クリアしたライン数.
-static uint_t   s_pre_lines   = 0;          ///< 揃ったライン数.
-static uint_t   s_level       = 1;          ///< レベル.
-static uint_t   s_score       = 0;          ///< スコア.
-static uint_t   s_high_score  = 0;          ///< ハイスコア.
-static uint_t   s_speed       = 0;          ///< 落下速度.
-static uint8_t  s_step        = 0;          ///< そのステートでのstep.
-static uint8_t  s_choise      = 0;          ///< 選択子番号.
+static cons_clock_t s_fall_time   = 0;          ///< 次の落下予定時間.
+static uint_t       s_lines       = 0;          ///< クリアしたライン数.
+static uint_t       s_pre_lines   = 0;          ///< 揃ったライン数.
+static uint_t       s_level       = 1;          ///< レベル.
+static uint_t       s_score       = 0;          ///< スコア.
+static uint_t       s_high_score  = 0;          ///< ハイスコア.
+static uint_t       s_speed       = 0;          ///< 落下速度.
+static uint8_t      s_step        = 0;          ///< そのステートでのstep.
+static uint8_t      s_choise      = 0;          ///< 選択子番号.
 
 typedef enum DrawFlag {
     DRAWF_FIELD = 0x01,
@@ -724,20 +761,23 @@ static void draw_gameUpdate(void) {
 /// ピース描画.
 ///
 static void draw_piece(pos_t x, pos_t y, uint8_t shape, uint8_t rot, bool bk) {
-    uint16_t ptn  = piece_shapes[shape][rot];
-    uint8_t  co   = PIECE_SHAPE_TO_COLOR(shape & 7);
-    uint8_t  i;
+    Cell const* cell = g_piece_cells[shape][rot];
+    uint8_t     co   = PIECE_SHAPE_TO_COLOR(shape & 7);
+    unsigned    i;
     co += ATR_P_FALL;
-    for (i = 0; i < 16; ++i) {
-        pos_t x2 = x + FIELD_SCALE_X(i &  3);
-        pos_t y2 = y + (i >> 2);
-        if (y2 >= 0) {
-            if (ptn & (0x8000 >> i)) {
-                cons_xycputs(x2, y2, co, STR_P_FALL);
-            } else if (bk) {
+    if (bk) {
+        for (i = 0; i < 16; ++i) {
+            pos_t x2 = x + FIELD_SCALE_X(i & 3);
+            pos_t y2 = y + (i >> 2);
+            if (y2 >= 0)
                 cons_xycputs(x2, y2, COL_DEFAULT, STR_SPC);
-            }
         }
+    }
+    for (i = 0; i < 4; ++i) {
+        pos_t x2 = x + FIELD_SCALE_X(cell[i].x);
+        pos_t y2 = y + cell[i].y;
+        if (y2 >= 0)
+            cons_xycputs(x2, y2, co, STR_P_FALL);
     }
 }
 
