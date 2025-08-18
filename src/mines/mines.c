@@ -864,7 +864,7 @@ static void draw_gameWin(void)
             cons_xycputs( x0, y0+2, COL_CONG_1, msg);
             if (dt <= 27) {
             } else if (dt < 30+30) {
-                int n = dt - 30;
+                int n = (int)(dt - 30);
                 char buf[8] = { 0 };
                 memcpy(buf, msg+1 + n, 4);
                 cons_xycputs(x0+1 + n, y0+2, COL_CONG_2, buf);

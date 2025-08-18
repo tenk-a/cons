@@ -63,7 +63,7 @@ static cons_clock_t _cons_getClock() {
 static void _cons_clock_sleep(cons_clock_t count) {
  #if defined(_WIN32)
     Sleep(count * 1000 / CONS_CLOCK_PER_SEC);
- #elif defined(_POSIX_C_SOURCE) && (_POSIX_C_SOURCE >= 199309L)
+ #elif defined(_POSIX_C_SOURCE) && (_POSIX_C_SOURCE >= 199309L) || defined(__APPLE__)
     struct timespec ts;
     ts.tv_sec  = count / CONS_CLOCK_PER_SEC;
     count %= CONS_CLOCK_PER_SEC;

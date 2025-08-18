@@ -701,7 +701,7 @@ static pos_t    s_draw_field_y;
 
 
 //  -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -
-//  GAME 描画.
+//  GAME 描画..
 
 #define PIECE_SHAPE_TO_COLOR(co)    ((co) + 1)
 
