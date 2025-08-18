@@ -13,16 +13,17 @@
 #include <time.h>
 
 #if defined(_WIN32)
-#include <windows.h>
-#undef MOUSE_MOVED
-#endif
-
-#if defined(CONS_USE_PDCURSES)
-#include <curses.h>
-#else
-#include <sys/time.h>
-#include <ncurses.h>
-#include <locale.h>
+ #include <windows.h>
+ #undef MOUSE_MOVED
+ #include <curses.h>
+ #define CONS_USE_PDCURSES
+#elif defined(__DOS__)
+ #include <curses.h>
+ #define CONS_USE_PDCURSES
+#else   // mac,linux,unix
+ #include <sys/time.h>
+ #include <locale.h>
+ #include <ncurses.h>
 #endif
 
 static cons_pos_t   _cons_screen_width;
@@ -35,15 +36,43 @@ static int          _cons_cur_key;
 static int          _cons_win_codepage;
 #endif
 
-static cons_clock_t _con_getCurrentTimer() {
- #if defined __DJGPP__
+static cons_clock_t _cons_getClock() {
+ #if defined(_WIN32)
+    static unsigned __int64 per_sec = 0;
+    unsigned __int64        count   = 0;
+    if (!per_sec)
+        QueryPerformanceFrequency((LARGE_INTEGER*)&per_sec);
+    QueryPerformanceCounter((LARGE_INTEGER*)&count);
+    return count * CONS_CLOCK_PER_SEC / per_sec;
+ #elif defined(CLOCK_MONOTONIC)
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (cons_clock_t)ts.tv_sec * 1000000ULL + (ts.tv_nsec / 1000ULL);
+ #elif defined(__DJGPP__)
     return (cons_clock_t)(uclock() * CONS_CLOCK_PER_SEC / UCLOCKS_PER_SEC);
- #elif defined(__DOS__) || defined(_WIN32)
+ #elif defined(__DOS__)
     return (cons_clock_t)(clock() * CONS_CLOCK_PER_SEC / CLOCKS_PER_SEC);
  #else
     struct timeval tv = {0,0};
     gettimeofday(&tv, NULL);
-    return (cons_clock_t)CONS_MSEC_TO_CLOCK(tv.tv_sec * 1000U + (tv.tv_usec / 1000U));
+    return (cons_clock_t)((tv.tv_sec * 1000000ULL + tv.tv_usec) * CONS_CLOCK_PER_SEC / 1000000ULL);
+ #endif
+}
+
+// sleep.
+static void _cons_clock_sleep(cons_clock_t count) {
+ #if defined(_WIN32)
+    Sleep(count * 1000 / CONS_CLOCK_PER_SEC);
+ #elif defined(_POSIX_C_SOURCE) && (_POSIX_C_SOURCE >= 199309L)
+    struct timespec ts;
+    ts.tv_sec  = count / CONS_CLOCK_PER_SEC;
+    count %= CONS_CLOCK_PER_SEC;
+    ts.tv_nsec = (long)(count * (1000000000LL / CONS_CLOCK_PER_SEC));
+    nanosleep(&ts, &ts);
+ #elif !defined(__DOS__)
+    usleep(count * 1000000LL / CONS_CLOCK_PER_SEC);
+ #else
+    (void)count;
  #endif
 }
 
@@ -62,17 +91,18 @@ int cons_init(unsigned flags) {
     (void)flags;
  #if !defined(CONS_USE_PDCURSES)
     setlocale(LC_ALL, "");
- #elif (defined(_WIN32) && defined(CONS_USE_UNICODE))   // nennotame
+ #elif (defined(_WIN32) && defined(CONS_USE_UNICODE))
     _cons_win_codepage = GetConsoleOutputCP();
     SetConsoleOutputCP(65001);
  #endif
 
-    _cons_start_clock = _con_getCurrentTimer();
+    _cons_start_clock = _cons_getClock();
 
     initscr();
     noecho();
     cbreak();
     keypad(stdscr, TRUE);
+    nodelay(stdscr, TRUE);    // Non-blocking getch.
     curs_set(0);
     _cons_updateScreenSize();
 
@@ -95,8 +125,6 @@ int cons_init(unsigned flags) {
             init_pair(0x10|8|i, COLOR_BLACK, 8|cols[i]);
         }
     }
-
-    timeout(50);    // getch timeout (milliseconds)
     return 1;
 }
 
@@ -107,15 +135,29 @@ void cons_term(void) {
  #endif
 }
 
+static inline cons_clock_t _cons_getClockN(void) {
+    return _cons_getClock() - _cons_start_clock;
+}
+
 void cons_updateBegin(void) {
-    _cons_cur_clock = (cons_clock_t)(_con_getCurrentTimer()-_cons_start_clock);
+    _cons_cur_clock = _cons_getClockN();
     _cons_cur_tick  = _cons_cur_clock * CONS_TICK_PER_SEC / CONS_CLOCK_PER_SEC;
     _cons_cur_key   = (cons_key_t)getch();
-
     _cons_updateScreenSize();
 }
 
 void cons_updateEnd(void) {
+    cons_clock_t now  = _cons_getClockN();
+    cons_clock_t next = (_cons_cur_tick + 1) * CONS_CLOCK_PER_SEC / CONS_TICK_PER_SEC;
+    if (now < next) {
+        cons_clock_t dif = next - now;
+        _cons_clock_sleep(dif);
+        do {
+            now = _cons_getClockN();
+        } while (now < next);
+    } else {
+        _cons_clock_sleep(0);
+    }
     refresh();
 }
 

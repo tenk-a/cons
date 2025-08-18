@@ -28,15 +28,15 @@
 :: all build.
 chcp 65001
 
-cmd /c all_bld.bat WATCOM
-cmd /c all_bld.bat MSYS64
-cmd /c all_bld.bat MSYS32
-cmd /c all_bld.bat DJGPP
-cmd /c all_bld.bat DJGPC98
 cmd /c all_bld.bat VC-WIN64
 cmd /c all_bld.bat VC-WIN32
 cmd /c all_bld.bat VC-ARM64
 cmd /c all_bld.bat VC-ARM32
+cmd /c all_bld.bat MSYS64
+cmd /c all_bld.bat MSYS32
+cmd /c all_bld.bat WATCOM
+cmd /c all_bld.bat DJGPP
+cmd /c all_bld.bat DJGPC98
 rem goto END
 
 cmd /c all_bld.bat ia16-elf-exe

@@ -52,22 +52,23 @@
 #endif
 #endif
 
-#define CONS_CLOCK_PER_SEC      1000U
-#define CONS_CLOCK_TO_MSEC(tm)  (tm) //((tm) * 1000 / CONS_CLOCK_PER_SEC)
-#define CONS_MSEC_TO_CLOCK(ms)  (ms) //((ms)*CONS_CLOCK_PER_SEC / 1000)
+#define CONS_CLOCK_TO_MSEC(tm)  ((tm) * 1000 / CONS_CLOCK_PER_SEC)
+#define CONS_MSEC_TO_CLOCK(ms)  ((ms)*CONS_CLOCK_PER_SEC / 1000)
 #define CONS_TICK_PER_SEC       60U
 #define CONS_TICK_TO_MSEC(tm)   ((tm) * 1000 / CONS_TICK_PER_SEC)
 #define CONS_MSEC_TO_TICK(ms)   ((ms) * CONS_TICK_PER_SEC / 1000)
 
 #if !defined(__DOS__)
-typedef unsigned long long cons_clock_t;
-typedef short          cons_pos_t;
+#define CONS_CLOCK_PER_SEC      1000000ULL
+typedef unsigned long long      cons_clock_t;
+typedef short                   cons_pos_t;
 #else
-typedef unsigned long  cons_clock_t;
-typedef signed char    cons_pos_t;
+#define CONS_CLOCK_PER_SEC      1000U
+typedef unsigned long           cons_clock_t;
+typedef signed char             cons_pos_t;
 #endif
-typedef unsigned char  cons_col_t;
-typedef unsigned short cons_key_t;
+typedef unsigned char           cons_col_t;
+typedef unsigned short          cons_key_t;
 
 int  cons_init(unsigned flags);
 void cons_term(void);
