@@ -836,13 +836,13 @@ static void draw_gameWin(void)
     } else {
         static char const msg[]  = "  C O N G R A T U L A T I O N S !   ";
         static char const spcs[] = "                                    ";
-        char*  frame = STR_CONG_FRAME;
-        uint_t  i;
-        pos_t   w  = 36;
-        pos_t   h  = 6;
-        pos_t   x0 = (cons_screenWidth()  - w) / 2;
-        pos_t   y0 = (cons_screenHeight() - h) / 2;
-        uint_t  dt = cons_tick() - s_draw_tick_0;
+        char*        frame = STR_CONG_FRAME;
+        uint_t       i;
+        pos_t        w  = 36;
+        pos_t        h  = 6;
+        pos_t        x0 = (cons_screenWidth()  - w) / 2;
+        pos_t        y0 = (cons_screenHeight() - h) / 2;
+        cons_clock_t dt = cons_tick() - s_draw_tick_0;
         cons_setRefreshRect(3, x0, y0, w, h);   // 動いている範囲の描画更新.
         cons_setcolor(COL_CONG_FRAME);
         if (dt < 9) {
