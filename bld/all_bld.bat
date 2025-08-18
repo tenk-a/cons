@@ -50,7 +50,6 @@ chcp 932
 cmd /c all_bld.bat VCVER-WIN32 120
 cmd /c all_bld.bat VCVER-WIN32 110
 cmd /c all_bld.bat VCVER-WIN32 90
-cmd /c all_bld.bat VCVER-WIN32 80
 cmd /c all_bld.bat BORLAND
 
 chcp 65001
