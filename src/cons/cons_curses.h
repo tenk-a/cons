@@ -79,6 +79,8 @@ void cons_updateEnd(void);
 cons_clock_t cons_clock(void);
 cons_clock_t cons_tick(void);
 cons_key_t   cons_key(void);
+int          cons_kbhit(void);
+
 cons_pos_t   cons_screenWidth(void);
 cons_pos_t   cons_screenHeight(void);
 

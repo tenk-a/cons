@@ -181,6 +181,10 @@ cons_key_t   cons_key(void) {
     return (cons_key_t)_cons_cur_key;
 }
 
+int         cons_kbhit(void) {
+    return _cons_cur_key != 0;
+}
+
 cons_pos_t   cons_screenWidth(void) {
     return _cons_screen_width;
 }
