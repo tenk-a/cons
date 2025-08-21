@@ -131,6 +131,7 @@ rem ## vc ######################################
 
 :L_VC14x_J2
     set "COMPILER=%VcVer%%CcArch%"
+    rem set VcSdkType=10.0.22621.0
     set "VcVers_Args=%CcArch%"
     if /I not "%CcArch%"=="%CcHostArch%" set "VcVers_Args=%CcHostArch%_%CcArch%"
     if /I "%VcVers_Args%"=="x64_x86" set "VcVers_Args=x86"
@@ -142,7 +143,7 @@ rem ## vc ######################################
     if exist "%VsRoot%\Enterprise\Common7\Tools\VsMSBuildCmd.bat"   set "VsEdition=Enterprise"
     if "%VsEdition%"=="" goto L_VC14x_ERROR
     set "VsRoot=%VsRoot%\%VsEdition%"
-    call "%VsRoot%\VC\Auxiliary\Build\vcvarsall.bat" %VcVers_Args%
+    call "%VsRoot%\VC\Auxiliary\Build\vcvarsall.bat" %VcVers_Args% %VcSdkType%
     goto L_END
 :L_VC14x_ERROR
     set VsRoot=
@@ -313,7 +314,7 @@ rem ## vc ######################################
     set COMPILER=dmc
     if /i "%DMC_DIR%"=="" set "DMC_DIR=c:\dm"
     set "PATH=%DMC_DIR%\bin;%setcc_base_path%"
-    ::
+    :: https://github.com/tenk-a/cc_for_dmc
     set "PATH=d:\proj\cc_for_dmc\bin;%PATH%"
     set "CC=dmc-cc.exe"
     set "CXX=dmc-cc.exe"

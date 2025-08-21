@@ -32,6 +32,7 @@ static cons_clock_t _cons_start_clock;
 static cons_clock_t _cons_cur_clock;
 static cons_clock_t _cons_cur_tick;
 static int          _cons_cur_key;
+static char         _cons_has_color;
 #if defined(_WIN32) && defined(CONS_USE_UNICODE)
 static int          _cons_win_codepage;
 #endif
@@ -91,7 +92,7 @@ int cons_init(unsigned flags) {
     (void)flags;
  #if !defined(CONS_USE_PDCURSES)
     setlocale(LC_ALL, "");
- #elif (defined(_WIN32) && defined(CONS_USE_UNICODE))
+ #elif defined(_WIN32) && defined(CONS_USE_UNICODE)
     _cons_win_codepage = GetConsoleOutputCP();
     SetConsoleOutputCP(65001);
  #endif
@@ -106,15 +107,18 @@ int cons_init(unsigned flags) {
     curs_set(0);
     _cons_updateScreenSize();
 
+    _cons_has_color = 1;
     if (has_colors() == FALSE) {
+        _cons_has_color = 0;
         endwin();
         return 0;
     }
 
-    start_color();
     {
-        static int const cols[8] = { COLOR_BLACK, COLOR_BLUE, COLOR_RED, COLOR_MAGENTA,
-                        COLOR_GREEN, COLOR_CYAN, COLOR_YELLOW, COLOR_WHITE };
+        static int const cols[8] = {
+            COLOR_BLACK, COLOR_BLUE, COLOR_RED, COLOR_MAGENTA,
+            COLOR_GREEN, COLOR_CYAN, COLOR_YELLOW, COLOR_WHITE
+        };
         int i = 0;
         start_color();
         for (i = 0; i < 8; ++i) {
@@ -149,15 +153,11 @@ void cons_updateBegin(void) {
 void cons_updateEnd(void) {
     cons_clock_t now  = _cons_getClockN();
     cons_clock_t next = (_cons_cur_tick + 1) * CONS_CLOCK_PER_SEC / CONS_TICK_PER_SEC;
-    if (now < next) {
-        cons_clock_t dif = next - now;
-        _cons_clock_sleep(dif);
-        do {
-            now = _cons_getClockN();
-        } while (now < next);
-    } else {
-        _cons_clock_sleep(0);
-    }
+    cons_clock_t dif  = (next > now) ? next - now : 0;
+    _cons_clock_sleep(dif);
+    do {
+        now = _cons_getClockN();
+    } while (now < next);
     refresh();
 }
 
@@ -203,6 +203,10 @@ void cons_setcolor(cons_col_t col) {
 
 void cons_resetcolor(cons_col_t col) {
     attroff(COLOR_PAIR(col)); // | A_BOLD);
+}
+
+int  cons_hascolor(void) {
+    return _cons_has_color;
 }
 
 void cons_puts(char const* s) {

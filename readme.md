@@ -46,11 +46,9 @@ xcode、linux(gcc)、vc、[watcom](https://github.com/open-watcom/open-watcom-v2
 利用するコンパイラのパスをあらかじめ通しておいて。
 <!-- コンパイラごとのプロンプトを使う設定方法でも、この環境で用意している setcc.bat を使うでも。 -->
 
-bld/ フォルダにて
-
 ```batch
-bld.bat [ツールチェイン名]
-bld.sh  [ツールチェイン名]
+bld\bld.bat [ツールチェイン名]
+bld/bld.sh  [ツールチェイン名]
 ```
 
 を実行で、bin/[ツールチェイン名]/*.exe を生成。
@@ -75,7 +73,32 @@ bld.sh  [ツールチェイン名]
 　watcom-pc98-dos16-s 　 watcom-pc98-dos32
 ```
 
-現状とは違うが大筋の、この環境のビルドの仕組みや、ncurses / pdcurses 向けのツールチェインの説明等は、以下を。
+を用意。
+
+やっていることは、まず、windows 環境では thirdpary/ にターゲット用の pdcurses ライブラリがなければそれを install_pdcurses.bat でビルド。linux や mac は ncurses がある前提。
+
+ついで cmake で Genarator と toolchain ファイルを指定してビルド＆インストール。
+
+たとえば、
+
+```batch
+:: vc14.3(2022) win64 用.
+cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=toolchain/vc-win64-toolchain.cmake -B bld/vc-win64 .
+cmake --install -B bld/vc-win64
+
+:: Watcom C 16bit dos 用
+cmake -G "Watcom WMake" -DCMAKE_TOOLCHAIN_FILE=toolchain/watcom-dos16-toolchain.cmake -B bld/watcom-dos16 .
+cmake --install -B bld/watcom-dos16
+```
+
+Generator と toolchain の組み合わせを入力するのが面倒なので、bld スクリプトにしている。
+
+あと。
+all_bld.bat は、一度に複数のコンパイラでビルドするバッチ。自分の環境に合わせて、書き換える前提。
+setcc.bat は コマンドプロンプト用の各コンパイラの設定を行うバッチ。これも、自分の環境に合わせて、書き換える前提。
+
+
+※ なお、現状とは多少違うが大筋の、この環境のビルドの仕組みや、ncurses / pdcurses 向けのツールチェインの説明等は、以下を。
 
 　[toolchain利用cmakeでdos,win,mac,linux向ビルド](https://zenn.dev/tenka/articles/building_with_cmake_toolchain_file)
 

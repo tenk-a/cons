@@ -58,6 +58,10 @@
 #define CONS_TICK_TO_MSEC(tm)   ((tm) * 1000 / CONS_TICK_PER_SEC)
 #define CONS_MSEC_TO_TICK(ms)   ((ms) * CONS_TICK_PER_SEC / 1000)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if !defined(__DOS__)
 #define CONS_CLOCK_PER_SEC      1000000ULL
 typedef unsigned long long      cons_clock_t;
@@ -89,6 +93,7 @@ void cons_clear(void);
 void cons_setxy(cons_pos_t x, cons_pos_t y);
 void cons_setcolor(cons_col_t col);
 void cons_resetcolor(cons_col_t col);
+int  cons_hascolor(void);
 
 void cons_puts(char const* msg);
 void cons_xyputs(cons_pos_t x, cons_pos_t y, char const* msg);
@@ -99,5 +104,9 @@ void cons_xyprintf(cons_pos_t x, cons_pos_t y, char const* fmt, ...);
 void cons_xycprintf(cons_pos_t x, cons_pos_t y, cons_col_t col, char const* fmt, ...);
 
 #define cons_setRefreshRect(n,x,y,w,h)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //CONS_CURSES_H__

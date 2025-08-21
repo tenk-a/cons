@@ -55,9 +55,11 @@ add_library(cons OBJECT
 )
 target_compile_options(cons PUBLIC
   ${CONS_OPTS}
+  ${TOOLCHAIN_ADD_OPTS}
 )
 target_include_directories(cons PUBLIC
   ${CONS_INC_DIRS}
+  ${TOOLCHAIN_ADD_INCLUDE_DIRS}
 )
 target_link_directories(cons PUBLIC
   ${CONS_LIB_DIRS}

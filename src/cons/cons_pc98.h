@@ -59,6 +59,10 @@
 #define CONS_TICK_TO_MSEC(tm)   ((tm) * 1000 / CONS_TICK_PER_SEC)
 #define CONS_MSEC_TO_TICK(ms)   ((ms) * CONS_TICK_PER_SEC / 1000)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef unsigned long   cons_clock_t;
 typedef signed char     cons_pos_t;
 typedef unsigned char   cons_col_t;
@@ -91,10 +95,12 @@ void cons_setcolor(cons_col_t co);
 #define cons_clock()        (_cons_PRIVATE_clock)
 #define cons_tick()         (_cons_PRIVATE_tick)
 #define cons_key()          (_cons_PRIVATE_key)
+#define cons_kbhit()        (_cons_PRIVATE_key != CONS_KEY_ERR)
 #define cons_screenWidth()  (_cons_PRIVATE_screen_width)
 #define cons_screenHeight() (_cons_PRIVATE_screen_height)
 #define cons_setxy(x,y)     (_cons_PRIVATE_cur_x=(x), _cons_PRIVATE_cur_y=(y))
 #define cons_resetcolor(c)  cons_setcolor(CONS_COLOR_DEFAULT)
+#define cons_hascolor()     (1)
 
 #define cons_printf(...)    cons_puts(_cons_PRIVATE_sprintf(__VA_ARGS__))
 #define cons_xyprintf(x,y, ...) \
@@ -104,5 +110,9 @@ void cons_setcolor(cons_col_t co);
 
 #define CONS_REFRESH_RECT_N     4
 void cons_setRefreshRect(unsigned char n, cons_pos_t x, cons_pos_t y, cons_pos_t w, cons_pos_t h);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //CONS_P98_H__
