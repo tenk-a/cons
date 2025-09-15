@@ -9,3 +9,5 @@ set(CMAKE_WATCOM_RUNTIME_LIBRARY "SingleThreaded")
 
 set(CMAKE_C_FLAGS   "-D__DOS__ ${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "-D__DOS__ ${CMAKE_CXX_FLAGS}")
+
+include(${CMAKE_CURRENT_LIST_DIR}/watcom_incl.cmake)

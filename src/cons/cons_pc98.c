@@ -29,14 +29,6 @@
 
 //  -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -
 
-/** Initialize video.
- */
-static void video_init() {
-    union REGS r = {0};
-    r.h.ah = 0x03;
-    int86(0x18, &r, &r);
-}
-
 /** Show/hide text.
  */
 static void text_show(uint8_t flg) {
@@ -93,6 +85,14 @@ static void text_cls() { text_conPut("\x1b[2J"); }
 
 //  -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -
 //  Key
+
+/** Initialize keyboard.
+ */
+static void key_init() {
+    union REGS r = {0};
+    r.h.ah = 0x03;
+    int86(0x18, &r, &r);
+}
 
 /** Is a key pressed?
  */
@@ -397,6 +397,7 @@ cons_pos_t              _cons_PRIVATE_screen_width;
 cons_pos_t              _cons_PRIVATE_screen_height;
 cons_pos_t              _cons_PRIVATE_cur_x;
 cons_pos_t              _cons_PRIVATE_cur_y;
+char                    _cons_PRIVATE_enable_sjis = 1;
 
 typedef struct cons_rect_t {
     cons_pos_t  x, y;
@@ -418,7 +419,7 @@ int  cons_init(unsigned flags) {
     text_lineCheck();
     s_has_fnLine = s_textLineFnKey;
 
-    video_init();
+    key_init();
     text_show(0);
     text_PFKeySw(0);
     if (tvram_init() == 0)
@@ -593,7 +594,7 @@ void cons_puts(char const* str) {
 
     while (*s) {
         uint8_t c = *s++;
-        if (iskanji(c) == 0) {
+        if (!_cons_PRIVATE_enable_sjis || iskanji(c) == 0) {
             if (c == '\n') {
                 _cons_PRIVATE_cur_x = TVRAM_W;
             } else {

@@ -42,9 +42,9 @@ rem goto END
 cmd /c all_bld.bat ia16-elf-exe
 cmd /c all_bld.bat linux
 
-cmd /c all_bld.bat VCVER-WIN32 140
-cmd /c all_bld.bat VCVER-WIN32 141
 cmd /c all_bld.bat VCVER-WIN32 142
+cmd /c all_bld.bat VCVER-WIN32 141
+cmd /c all_bld.bat VCVER-WIN32 140
 
 chcp 932
 cmd /c all_bld.bat VCVER-WIN32 120
@@ -91,12 +91,15 @@ goto END
 :BLD_WATCOM
 call setcc.bat watcom
 call bld.bat watcom-win32
-call bld.bat watcom-dos16-s
 call bld.bat watcom-dos32
-call bld.bat watcom-pcat-dos16-s
+call bld.bat watcom-dos16-s
+call bld.bat watcom-dos16-l
 call bld.bat watcom-pcat-dos32
-call bld.bat watcom-pc98-dos16-s
+call bld.bat watcom-pcat-dos16-s
+call bld.bat watcom-pcat-dos16-l
 call bld.bat watcom-pc98-dos32
+call bld.bat watcom-pc98-dos16-s
+call bld.bat watcom-pc98-dos16-l
 goto END
 
 :BLD_MSYS64

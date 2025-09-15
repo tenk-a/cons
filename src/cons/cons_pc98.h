@@ -10,7 +10,7 @@
 
 #define CONS_PC98
 
-#define CONS_KEY_NONE           0
+#define CONS_KEY_NONE           0xffff
 #define CONS_KEY_DOWN           0x3D00
 #define CONS_KEY_UP             0x3A00
 #define CONS_KEY_LEFT           0x3B00
@@ -88,6 +88,7 @@ void cons_setcolor(cons_col_t co);
     extern cons_pos_t   _cons_PRIVATE_screen_height;
     extern cons_pos_t   _cons_PRIVATE_cur_x;
     extern cons_pos_t   _cons_PRIVATE_cur_y;
+    extern char         _cons_PRIVATE_enable_sjis;
     char* _cons_PRIVATE_sprintf(char const* fmt, ...);
 #endif
 
@@ -110,6 +111,8 @@ void cons_setcolor(cons_col_t co);
 
 #define CONS_REFRESH_RECT_N     4
 void cons_setRefreshRect(unsigned char n, cons_pos_t x, cons_pos_t y, cons_pos_t w, cons_pos_t h);
+
+#define cons_pc98_enableSJIS(sw)    (_cons_PRIVATE_enable_sjis = (sw))
 
 #ifdef __cplusplus
 }

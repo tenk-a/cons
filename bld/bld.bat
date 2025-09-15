@@ -14,6 +14,7 @@ cd ..
 set Toolchain=%1
 set OPT0=%2
 set GENE=
+set GENE2=
 set COMPILER=
 set ARCH=
 set CRT=
@@ -37,15 +38,12 @@ call thirdparty\install_pdcurses.bat %COMPILER% %ARCH% %CRT%
 set OPT1=-DCMAKE_BUILD_TYPE=Release
 set OPT2=
 
-if /I "%COMPILER:~0,6%"=="watcom" set GENE=-G "Watcom WMake"
-if /I "%COMPILER%"=="djgpp"   set GENE=-G "MinGW Makefiles"
-if /I "%COMPILER%"=="mingw"   set GENE=-G "MinGW Makefiles"
-if /I "%COMPILER%"=="borland" set GENE=-G "Borland Makefiles"
+if /I "%COMPILER:~0,6%"=="watcom" set "GENE=Watcom WMake"
+if /I "%COMPILER%"=="djgpp"       set "GENE=MinGW Makefiles"
+if /I "%COMPILER%"=="mingw"       set "GENE=MinGW Makefiles"
+if /I "%COMPILER%"=="borland"     set "GENE=Borland Makefiles"
 
 if /I not "%COMPILER:~0,2%"=="vc" goto L_CMAKE
-set GENE=-G "NMake Makefiles"
-set OPT1=
-set OPT2=--config Release
 set ARCH1=
 set "ARCH2=-A Win32"
 if /I "%ARCH%"=="win32"    goto SKIP_ARCH_E
@@ -65,16 +63,22 @@ set "ARCH1= ARM"
 set "ARCH2=-A arm"
 goto SKIP_ARCH_E
 :SKIP_ARCH_E
-rem @if /I not "%PATH:Microsoft Visual Studio 9.0=%"=="%PATH%" set GENE=-G "Visual Studio 9 2008%ARCH1%"
-rem @if /I not "%PATH:Microsoft Visual Studio 10.0=%"=="%PATH%" set GENE=-G "Visual Studio 10 2010%ARCH1%"
-rem @if /I not "%PATH:Microsoft Visual Studio 11.0=%"=="%PATH%" set GENE=-G "Visual Studio 11 2012%ARCH1%"
-rem @if /I not "%PATH:Microsoft Visual Studio 12.0=%"=="%PATH%" set GENE=-G "Visual Studio 12 2013%ARCH1%"
-@if /I not "%PATH:Microsoft Visual Studio 14.0=%"=="%PATH%" set GENE=-G "Visual Studio 14 2015%ARCH1%"
-@if /I not "%PATH:Microsoft Visual Studio\2017=%"=="%PATH%" set GENE=-G "Visual Studio 15 2017%ARCH1%"
-@if /I not "%PATH:Microsoft Visual Studio\2019=%"=="%PATH%" set GENE=-G "Visual Studio 16 2019" %ARCH2%
-@if /I not "%PATH:Microsoft Visual Studio\2022=%"=="%PATH%" set GENE=-G "Visual Studio 17 2022" %ARCH2%
+set "GENE=NMake Makefiles"
+rem @if /I not "%PATH:Microsoft Visual Studio 9.0=%"=="%PATH%"  set "GENE=Visual Studio 9 2008%ARCH1%"
+rem @if /I not "%PATH:Microsoft Visual Studio 10.0=%"=="%PATH%" set "GENE=Visual Studio 10 2010%ARCH1%"
+rem @if /I not "%PATH:Microsoft Visual Studio 11.0=%"=="%PATH%" set "GENE=Visual Studio 11 2012%ARCH1%"
+rem @if /I not "%PATH:Microsoft Visual Studio 12.0=%"=="%PATH%" set "GENE=Visual Studio 12 2013%ARCH1%"
+@if /I not "%PATH:Microsoft Visual Studio 14.0=%"=="%PATH%" set "GENE=Visual Studio 14 2015%ARCH1%"
+@if /I not "%PATH:Microsoft Visual Studio\2017=%"=="%PATH%" set "GENE=Visual Studio 15 2017%ARCH1%"
+@if /I not "%PATH:Microsoft Visual Studio\2019=%"=="%PATH%" set "GENE=Visual Studio 16 2019"
+@if /I not "%PATH:Microsoft Visual Studio\2022=%"=="%PATH%" set "GENE=Visual Studio 17 2022"
+@if /I not "%PATH:Microsoft Visual Studio\2019=%"=="%PATH%" set "GENE2=%ARCH2%"
+@if /I not "%PATH:Microsoft Visual Studio\2022=%"=="%PATH%" set "GENE2=%ARCH2%"
+@if /I "%GENE%"=="NMake Makefiles" goto L_CMAKE
+set OPT1=
+set OPT2=--config Release
 :L_CMAKE
-cmake %GENE% -DCMAKE_TOOLCHAIN_FILE=toolchain/%Toolchain%-toolchain.cmake %OPT0% %OPT1% -B bld/%Toolchain% .
+cmake -G "%GENE%" %GENE2% -DCMAKE_TOOLCHAIN_FILE=toolchain/%Toolchain%-toolchain.cmake %OPT0% %OPT1% -B bld/%Toolchain% .
 cmake --build bld/%Toolchain% %OPT2%
 cmake --install bld/%Toolchain%
 

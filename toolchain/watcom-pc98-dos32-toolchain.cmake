@@ -11,3 +11,5 @@ set(CMAKE_C_FLAGS   "-3r -fpi -D__DOS__ -D__PC98__ -DCONS_USE_NEAR_TEXT_BUF ${CM
 set(CMAKE_CXX_FLAGS "-3r -fpi -D__DOS__ -D__PC98__ -DCONS_USE_NEAR_TEXT_BUF ${CMAKE_CXX_FLAGS}")
 
 set(TOOLCHAIN_ADD_LIBS "pc983r" CACHE STRING "Default Windows libraries")
+
+include(${CMAKE_CURRENT_LIST_DIR}/watcom_incl.cmake)

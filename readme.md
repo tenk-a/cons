@@ -1,6 +1,6 @@
 # [cons サンプルゲーム](https://github.com/tenk-a/cons)
 
-ncurses / [pdcurses](https://pdcurses.org/) (windows,mac,linux)、および pcat,pc98 dosコンソール を用いた TUI のサンプル・ゲーム２種。
+ncurses / [pdcurses](https://pdcurses.org/) (windows,mac,linux)、および pcat,pc98 dosコンソール を用いた TUI のサンプル・ゲーム３種。
 
 複数ターゲット向けのビルドを CMAKE_TOOLCHAIN_FILE を用いた cmake で行う、
 以下に書いたネタのサンプルの延長。
@@ -40,6 +40,13 @@ xcode、linux(gcc)、vc、[watcom](https://github.com/open-watcom/open-watcom-v2
 強制終了     : ESCキー    | c
 ```
 
+## Klondike
+
+![image](doc/ss-klondike-unicode.png)
+
+トランプのソリティア/クロンダイク.
+
+
 
 ## ビルド
 
@@ -68,9 +75,9 @@ bld/bld.sh  [ツールチェイン名]
 　watcom-win32 　 watcom-dos32 　 watcom-dos16-s
 
 【ターゲット・コンソールVRAM直書】
-　ia16-pcat-dos16-s
-　watcom-pcat-dos16-s 　 watcom-pcat-dos32
-　watcom-pc98-dos16-s 　 watcom-pc98-dos32
+　ia16-pcat-dos16-sl
+　watcom-pcat-dos16-s　watcom-pcat-dos16-l 　 watcom-pcat-dos32
+　watcom-pc98-dos16-s　watcom-pc98-dos16-l 　 watcom-pc98-dos32
 ```
 
 を用意。
@@ -120,8 +127,10 @@ JIS由来の文字で等幅前提で考えられて組み合わせて使うよ�
 ## PC-AT DOS
 
 ```
-watcom-dos16-s  watcom-pcat-dos16-s  ia16-pcat-dos16-s
-watcom-dos32    watcom-pcat-dos32    djgpp-dos32
+watcom-dos16-s   watcom-pcat-dos16-s
+watcom-dos16-l   watcom-pcat-dos16-l
+watcom-dos32     watcom-pcat-dos32
+djgpp-dos32      ia16-pcat-dos16-s
 ```
 
 watcom と djgpp は windows 上でビルド、ia16-elf-exe 用は ubuntu 22.04 上でビルド。
@@ -136,20 +145,23 @@ watcom-dos16-s と watcom-dos32 は pdcurses を用いたもので、他は PC(A
 [djgpp windowsクロスコンパイラ・メモ](https://zenn.dev/tenka/articles/using_djgpp_on_windows)
 [ia16-elf-gcc メモ](https://zenn.dev/tenka/articles/use_ia16_elf_gcc) [cmake メモ](http://zenn.dev/tenka/articles/using_cmake_with_ia16elfgcc)
 
+Klondike は c++ で大きめで、コンパイラによって DOS small モデルではコンパイル通せなかったり動作不安定だったりするかもしれない。
+
+dos 用 watcom の cmake はタイミングによって、初回生成を失敗することがあるが、2回目をすると通るかもしれない。
+
 ※ djgpp は [build-gcc](https://github.com/jwt27/build-gcc) で生成した i386-pc-msdosdjgpp なものを想定。
 [build-djgpp](https://github.com/andrewwutw/build-djgpp) で生成した i586-pc-msdosdjgpp を使う場合は djgpp*-toolchain.cmake を修正のこと。
 
 ## PC98 DOS
 
 ```
-bld.bat watcom-pc98-dos16-s
-bld.bat watcom-pc98-dos32
-bld.bat djgpp-pc98-dos32
+watcom-pc98-dos16-s  watcom-pc98-dos16-l
+watcom-pc98-dos32    djgpp-pc98-dos32
 ```
 
 PC98 DOS 版は、80x25(30) のテキストVRAM直書で、watcom の 16bit dos と dos4gw、djgpp の cwsdpmi 環境。
 Open Watcom は v2.0 beta で PC98 対応がいろいろ入っているようなので、ビルドでは v2.0beta を使用。
-djgpp pc98 はかろうじて動作するかも?
+djgpp pc98 は一応動作していそう。
 
 動作は主に [dosbox-x](https://dosbox-x.com/) の PC98 モードで、たまに [Neko Project 21/W](https://simk98.github.io/np21w/), <!-- [t98next](https://akiyuki.boy.jp/t98next/),--> 実機(PC-386M) で確認。
 ※ dosbox-x は最近(2025)のモノを使用。古いと32bitプログラムは不安定かも。

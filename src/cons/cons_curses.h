@@ -11,7 +11,7 @@
 #define CONS_CURSES
 
 // ncurses, pdcurses.
-#define CONS_KEY_NONE           0
+#define CONS_KEY_NONE           0xffff
 #define CONS_KEY_ERR            0xffff
 #define CONS_KEY_DOWN           0x102
 #define CONS_KEY_UP             0x103

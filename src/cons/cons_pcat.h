@@ -12,7 +12,7 @@
 
 //#define CONS_USE_TEXT_W40
 
-#define CONS_KEY_NONE           0
+#define CONS_KEY_NONE           0xffff
 #define CONS_KEY_DOWN           0xE050
 #define CONS_KEY_UP             0xE048
 #define CONS_KEY_LEFT           0xE04B

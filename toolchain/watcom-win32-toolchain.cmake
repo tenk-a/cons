@@ -6,3 +6,5 @@ set(CMAKE_C_COMPILER "wcl386")
 set(CMAKE_CXX_COMPILER "wcl386")
 
 set(CMAKE_WATCOM_RUNTIME_LIBRARY "MultiThreaded")
+
+include(${CMAKE_CURRENT_LIST_DIR}/watcom_incl.cmake)
