@@ -64,7 +64,7 @@ install(TARGETS            "otitame" RUNTIME DESTINATION "${CMAKE_SOURCE_DIR}/bi
 
 #       -       -       -       -       -       -       -       -
 
-if(NOT CMAKE_TOOLCHAIN_FILE MATCHES "ia16")
+if(NOT CMAKE_TOOLCHAIN_FILE MATCHES "ia16" AND NOT CMAKE_TOOLCHAIN_FILE MATCHES "watcom-dos16-s")
 
 add_executable("klondike"
   "${SRC_DIR}/klondike/main.cpp"

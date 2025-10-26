@@ -53,12 +53,32 @@ xcode、linux(gcc)、vc、[watcom](https://github.com/open-watcom/open-watcom-v2
 利用するコンパイラのパスをあらかじめ通しておいて。
 <!-- コンパイラごとのプロンプトを使う設定方法でも、この環境で用意している setcc.bat を使うでも。 -->
 
+windows 環境では thirdpary/ にターゲット用の pdcurses ライブラリがなければそれを install_pdcurses.bat でビルド。linux や mac は ncurses がある前提。
+
+Generator と CMAKE_TOOLCHAIN_FILE を指定して cmake を使う。
+
+たとえば、
+
+```batch
+:: vc14.3(2022) win64 用.
+cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=toolchain/vc-win64-toolchain.cmake -B bld/vc-win64 .
+cmake --install -B bld/vc-win64
+
+:: Watcom C 16bit dos 用
+cmake -G "Watcom WMake" -DCMAKE_TOOLCHAIN_FILE=toolchain/watcom-dos16-toolchain.cmake -B bld/watcom-dos16 .
+cmake --install -B bld/watcom-dos16
+```
+
+
+ただ、コンパイラ(のバージョン)にあわせて Generator 選んだりツールチェイン指定が長かったりなので、
+
 ```batch
 bld\bld.bat [ツールチェイン名]
 bld/bld.sh  [ツールチェイン名]
 ```
 
-を実行で、bin/[ツールチェイン名]/*.exe を生成。
+で簡略化。
+win版は必要に応じて PDCurses をビルドし、bin/[ツールチェイン名]/*.exe を生成する。
 
 ツールチェイン名は、コンパイラやターゲット環境を元にして
 
@@ -80,30 +100,19 @@ bld/bld.sh  [ツールチェイン名]
 　watcom-pc98-dos16-s　watcom-pc98-dos16-l 　 watcom-pc98-dos32
 ```
 
-を用意。
+を用意。  
 
-やっていることは、まず、windows 環境では thirdpary/ にターゲット用の pdcurses ライブラリがなければそれを install_pdcurses.bat でビルド。linux や mac は ncurses がある前提。
+ツールチェイン名を省略した場合は、path で見つかるコンパイラの win 版が選択される。
 
-ついで cmake で Genarator と toolchain ファイルを指定してビルド＆インストール。
-
-たとえば、
-
+また、
 ```batch
-:: vc14.3(2022) win64 用.
-cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=toolchain/vc-win64-toolchain.cmake -B bld/vc-win64 .
-cmake --install -B bld/vc-win64
-
-:: Watcom C 16bit dos 用
-cmake -G "Watcom WMake" -DCMAKE_TOOLCHAIN_FILE=toolchain/watcom-dos16-toolchain.cmake -B bld/watcom-dos16 .
-cmake --install -B bld/watcom-dos16
+bld.bat list
 ```
+で、ツールチェイン一覧表示。
 
-Generator と toolchain の組み合わせを入力するのが面倒なので、bld スクリプトにしている。
-
-あと。
-all_bld.bat は、一度に複数のコンパイラでビルドするバッチ。自分の環境に合わせて、書き換える前提。
+あと。  
+all_bld.bat は、一度に複数のコンパイラでビルドするバッチ。自分の環境に合わせて、書き換える前提。  
 setcc.bat は コマンドプロンプト用の各コンパイラの設定を行うバッチ。これも、自分の環境に合わせて、書き換える前提。
-
 
 ※ なお、現状とは多少違うが大筋の、この環境のビルドの仕組みや、ncurses / pdcurses 向けのツールチェインの説明等は、以下を。
 

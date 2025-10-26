@@ -31,6 +31,8 @@ set(TOOLCHAIN_TARGET_ARCH  "${CMAKE_MATCH_2}" CACHE STRING "Toolchain Target arc
 #endif()
 #set(TOOLCHAIN_NAME "vc-${TOOLCHAIN_TARGET_PLATFORM}" CACHE STRING "Toolchain name" FORCE)
 
+#set(CMAKE_MAKE_PROGRAM "nmake")
+
 #----------------------------------------------------
 # app setting
 

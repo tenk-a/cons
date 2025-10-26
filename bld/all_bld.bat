@@ -44,12 +44,12 @@ cmd /c all_bld.bat linux
 
 cmd /c all_bld.bat VCVER-WIN32 142
 cmd /c all_bld.bat VCVER-WIN32 141
-cmd /c all_bld.bat VCVER-WIN32 140
+::cmd /c all_bld.bat VCVER-WIN32 140
 
 chcp 932
 cmd /c all_bld.bat VCVER-WIN32 120
 cmd /c all_bld.bat VCVER-WIN32 110
-cmd /c all_bld.bat VCVER-WIN32 90
+::cmd /c all_bld.bat VCVER-WIN32 90
 cmd /c all_bld.bat BORLAND
 
 chcp 65001
@@ -85,7 +85,7 @@ copy ..\toolchain\vc-win32-md-toolchain.cmake ..\toolchain\%vcver%-win32-md-tool
 call setcc.bat %vcver% win32
 call bld.bat %vcver%-win32
 call bld.bat %vcver%-win32-md
-del ..\toolchain\%vcver%-*.cmake
+rem del ..\toolchain\%vcver%-*.cmake
 goto END
 
 :BLD_WATCOM
@@ -128,15 +128,34 @@ call bld.bat borland-win32
 goto END
 
 :BLD_IA16_ELF_EXE
-wsl -d Ubuntu-22.04 bash -c "~/proj/cons/bld/bld.sh ia16-pcat-dos16-s"
+set "UBUNTU=Ubuntu-22.04"
+set "WSL_CUR_DIR="
+call :GET_WSL_CUR_DIR %UBUNTU%
+wsl -d %UBUNTU% bash -c "%WSL_CUR_DIR%/bld.sh ia16-pcat-dos16-s"
 goto END
 
 :LINUX
-wsl -d Ubuntu-22.04 bash -c "~/proj/cons/bld/bld.sh linux"
+set "UBUNTU=Ubuntu-24.04"
+set "WSL_CUR_DIR="
+call :GET_WSL_CUR_DIR %UBUNTU%
+wsl -d %UBUNTU% bash -c "%WSL_CUR_DIR%/bld.sh linux"
 goto END
+
+:GET_WSL_CUR_DIR
+setlocal EnableExtensions
+set "UBUNTU=%1"
+set "CUR_DIR=%~dp0"
+for %%I in ("%CUR_DIR%.") do set "CUR_DIR=%%~fI"
+for /f "usebackq delims=" %%P in (`wsl -d %UBUNTU% wslpath -a "%CUR_DIR%"`) do set "WSL_CUR_DIR=%%P"
+endlocal & (
+  set "WSL_CUR_DIR=%WSL_CUR_DIR%"
+)
+exit /b 0
 
 :ERR
 @echo Invalid argument : %1
 goto END
 
 :END
+set "UBUNTU="
+set "WSL_CUR_DIR="

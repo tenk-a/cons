@@ -332,7 +332,8 @@ rem ## vc ######################################
     set COMPILER=watcom
 :L_WATCOM_1
     if /i "%WATCOM%"=="" set "WATCOM=c:\watcom"
-    set "PATH=%WATCOM%\BINNT;%WATCOM%\BINW;%setcc_base_path%"
+    :: set "PATH=%WATCOM%\BINNT;%WATCOM%\BINW;%setcc_base_path%"
+    set "PATH=%WATCOM%\BINNT64;%setcc_base_path%"
     set "EDPATH=%WATCOM%\EDDAT"
     rem set "LIB=%PATCOM%\lib386;%PATCOM%\lib386\nt;%PATCOM%\lib386\nt\ddk;%PATCOM%\lib386\nt\directx"
     set "INCLUDE=%WATCOM%\H;%WATCOM%\H\NT;%WATCOM%\H\NT\DIRECTX;%WATCOM%\H\DDK;%INCLUDE%"
