@@ -553,7 +553,7 @@ static uint8_t gameOver(void) {
 #define STR_CONG_FRAME      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 static char const str_digits[][4] = {"①","②","③","④","⑤","⑥","⑦","⑧"};
 
-#elif defined(__PC98__) // NEC SJIS
+#elif defined(__PC98__)     // PC98 SJIS
 #define SCR_X_SHIFT         1
 #define STR_EMPTY           "  "
 #define STR_CELL_CUR        "\x81\x9f"  // "◆"
@@ -782,17 +782,17 @@ void draw_cursor(void) {
 /// タイトル画面表示.
 ///
 static void draw_gameTitle(void) {
-    int sw = cons_screenWidth();
-    int sh = cons_screenHeight();
-    int x  = (sw - 26)/2;
-    int y  = (sh - 14)/2;
-    uint8_t col[4] = { COL_DEFAULT, COL_DEFAULT, COL_DEFAULT, COL_DEFAULT };
+    int     sw      = cons_screenWidth();
+    int     sh      = cons_screenHeight();
+    int     x       = (sw - 26)/2;
+    int     y       = (sh - 14)/2;
     if (s_draw_state != s_draw_prev_state) {    // title初回描画.
         cons_xycputs(x+ 2, y+ 1, COL_TITLE  , "M I N E  S W E E P E R");
         cons_xycputs(x+ 3, y+ 2, COL_TITLE_2, "M I N E  S W E E P E R");
         s_draw_map_level = 0xff;    // 選択肢再描画のため前回位置を0-2以外に.
     }
-    if (s_map_level != s_draw_map_level) {  // 選択が変わったら再描画.
+    if (s_map_level != s_draw_map_level) {      // 選択が変わったら再描画.
+        uint8_t col[4]  = { COL_DEFAULT, COL_DEFAULT, COL_DEFAULT, COL_DEFAULT };
         s_draw_map_level = s_map_level;
         col[s_map_level] = COL_CHOOSE;
         x += 5;
@@ -800,9 +800,8 @@ static void draw_gameTitle(void) {
         cons_xycputs(x, y+ 9, col[1], "  MIDDLE STAGE");
         cons_xycputs(x, y+11, col[2], "  LARGE  STAGE");
         cons_xycputs(x, y+13, col[3], "  EXIT");
-        x += 2 - TITLE_CUR_W;
-        cons_xycputs(x, y+7+s_map_level*2, COL_CHOOSE, STR_TITLE_CUR);
-        cons_setRefreshRect(1, x, y+7, 14, 7);      // 描画更新範囲設定.
+        cons_xycputs(x+2-TITLE_CUR_W, y+7+s_map_level*2, COL_CHOOSE, STR_TITLE_CUR);
+        cons_setRefreshRect(1, x-1, y+7, 16, 7);  // 描画更新範囲設定.
     }
 }
 

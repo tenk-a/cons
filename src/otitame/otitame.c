@@ -144,7 +144,7 @@ static void field_placePiece(Piece const* p) {
 
 /// 行が揃ったか?
 /// @return 今回揃ったライン数.
-static uint8_t filed_checkReach() {
+static uint8_t filed_checkReach(void) {
     uint8_t lines = 0;
     pos_t   x;
     pos_t   y     = FIELD_H;
@@ -168,7 +168,7 @@ static uint8_t filed_checkReach() {
 
 /// ライン消去.
 /// @return 消去したライン数.
-static uint8_t filed_clearLines() {
+static uint8_t filed_clearLines(void) {
     uint8_t lines   = 0;
     pos_t   x;
     pos_t   y       = FIELD_H;
@@ -299,6 +299,8 @@ static uint8_t getKey(void) {
     default: return 0;
     }
 }
+
+//  -   -   -   -   -   -   -   -   -   -   -   -
 
 /// ゲーム・メインループ.
 /// @return osへ返す値. 0:正常終了. 1:エラー終了.
@@ -589,6 +591,7 @@ static uint8_t gameOver(void) {
 #if defined(__PCAT__) && (CONSINIT_FLAGS & 1)  // PC-AT 40x25
 
 #define STR_SPC                     " "
+#define STR_SPCS                    "    "
 #define STR_P_FIX                   " "
 #define ATR_P_FIX                   CONS_COL_REVERSE
 #define STR_P_FALL                  " "
@@ -601,19 +604,25 @@ static uint8_t gameOver(void) {
 #elif defined(__PC98__)             // PC98 80x25
 
 #define STR_SPC                     "  "
+#define STR_SPCS                    "        "
 #define STR_P_FIX                   "\x81\xA1"   // "■"
 #define ATR_P_FIX                   0x00
 #define STR_P_FALL                  "  "
 #define ATR_P_FALL                  CONS_COL_REVERSE
 #define STR_P_REACH                 "  "
 #define ATR_P_REACH                 CONS_COL_REVERSE
+#if defined(__PC98__)
 #define STR_WALL                    "\x86\xA5"   // "┃"
+#else
+#define STR_WALL                    "\x84\xAB"   // "┃"
+#endif
 #define FIELD_SCALE_X(x)            ((x) << 1)
 
 #elif CONS_COL_REVERSE > 0          // 反転有.
 
 #if CONS_COL_LIGHT > 0              // 16 色.
 #define STR_SPC                     "  "
+#define STR_SPCS                    "        "
 #define STR_P_FIX                   "  "
 #define ATR_P_FIX                   CONS_COL_REVERSE
 #define STR_P_FALL                  "  "
@@ -624,6 +633,7 @@ static uint8_t gameOver(void) {
 #define FIELD_SCALE_X(x)            ((x) << 1)
 #else                               // 8色.
 #define STR_SPC                     "  "
+#define STR_SPCS                    "        "
 #define STR_P_FIX                   "[]"
 #define ATR_P_FIX                   0x00
 #define STR_P_FALL                  "  "
@@ -637,6 +647,7 @@ static uint8_t gameOver(void) {
 #else                               // 反転無.
 
 #define STR_SPC                     " "
+#define STR_SPCS                    "        "
 #define STR_P_FIX                   "O"
 #define ATR_P_FIX                   0x00
 #define STR_P_FALL                  "O"
@@ -659,20 +670,21 @@ static uint8_t gameOver(void) {
 #define ATR_P_REACH                 (s_piece_parts->colofs[3-1])
 #define STR_WALL                    (s_piece_parts->part[4])
 #define FIELD_SCALE_X(x)            ((x) << s_field_shift_x)
+#define STR_SPCS                    (s_piece_parts->part[5])
 
 typedef struct PieceParts {
     uint8_t     shift_x;    ///< フィールド座標->コンソール座標 変換シフト数.
     uint8_t     colofs[3];  ///< 色オフセット.
-    char const* part[5];    ///< 欠片 [0]空白 [1]固定 [2]落下 [3]リーチ [4]壁.
+    char const* part[6];    ///< 欠片 [0]空白 [1]固定 [2]落下 [3]リーチ [4]壁. [5]空白*4
 } PieceParts;
 
 static PieceParts  const piece_parts_tbl[] = {
-    { 1, { 0x10, 0x18, 0x18 }, { "  ", "  ", "  ", "  ", "||" } },
-    { 0, { 0x10, 0x18, 0x18 }, { " " , " " , " " , " " , "|"  } },
-    { 0, {    0,    8,    8 }, { " " , "O" , "O" , "#" , "|"  } },
-    { 1, {    0,    8,    8 }, { "  ", "[]", "[]", "[]", "||" } },
+    { 1, { 0x10, 0x18, 0x18 }, { "  ", "  ", "  ", "  ", "||", "        " } },
+    { 0, { 0x10, 0x18, 0x18 }, { " " , " " , " " , " " , "|" , "    "     } },
+    { 0, {    0,    8,    8 }, { " " , "O" , "O" , "#" , "|" , "    "     } },
+    { 1, {    0,    8,    8 }, { "  ", "[]", "[]", "[]", "||", "        " } },
  #if defined(CONS_USE_UNICODE)
-    { 1, {    0,    8, 0x18 }, { "  ", "■", "■", "  ", "‖" } },
+    { 1, {    0,    8, 0x18 }, { "  ", "■", "■", "  ", "‖", "        " } },
  #endif
 };
 enum { PiecePartsTbl_size = sizeof(piece_parts_tbl) / sizeof(piece_parts_tbl[0]) };
@@ -701,7 +713,7 @@ static pos_t    s_draw_field_y;
 
 
 //  -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -
-//  GAME 描画..
+//  GAME 描画.
 
 #define PIECE_SHAPE_TO_COLOR(co)    ((co) + 1)
 
@@ -737,11 +749,10 @@ static void draw_piece(pos_t x, pos_t y, uint8_t shape, uint8_t rot, bool bk) {
     unsigned    i;
     co += ATR_P_FALL;
     if (bk) {
-        for (i = 0; i < 16; ++i) {
-            pos_t x2 = x + FIELD_SCALE_X(i & 3);
-            pos_t y2 = y + (i >> 2);
+        for (i = 0; i < 4; ++i) {
+            pos_t y2 = y + i;
             if (y2 >= 0)
-                cons_xycputs(x2, y2, COL_DEFAULT, STR_SPC);
+                cons_xycputs(x, y2, COL_DEFAULT, STR_SPCS);
         }
     }
     for (i = 0; i < 4; ++i) {
@@ -967,7 +978,7 @@ static void draw_gameOver(void) {
 
 /// オプション取得.
 ///
-static void getOpt(char const* a) {
+static void checkOpt(char const* a) {
     if (strncmp(a, "-piece", 6) == 0) {
      #if defined(USE_SELECT_PIECE)
         select_piece_init((uint8_t)atoi(a+6));
@@ -986,7 +997,7 @@ static void loadOpts(void) {
     FILE* fp = fopen(CFG_NAME, "rt");
     if (fp) {
         while (fgets(buf, sizeof buf, fp) != NULL)
-            getOpt(buf);
+            checkOpt(buf);
         fclose(fp);
     }
 }
@@ -1010,7 +1021,7 @@ int main(int argc, char* argv[]) {
     int i;
     loadOpts();
     for (i = 1; i < argc; ++i)
-        getOpt(argv[i]);
+        checkOpt(argv[i]);
     gameMain();
     saveOpts();
     return 0;

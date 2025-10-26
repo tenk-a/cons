@@ -563,7 +563,8 @@ void cons_xyputs(cons_pos_t x, cons_pos_t y, char const* s) {
     cons_puts(s);
 }
 
-#define iskanji(c)  (((c)>=0x81 && (c)<=0x9f) || ((c)>=0xE0 && (c)<=0xfc))
+//#define iskanji(c)  (((c)>=0x81 && (c)<=0x9f) || ((c)>=0xE0 && (c)<=0xfc))
+#define iskanji(c)  (((unsigned)((c) ^ 0x20) - 0xA1) < 0x3C)
 
 /** SJIS->JIS
  */

@@ -11,6 +11,9 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#ifndef __cplusplus
+#include <stdbool.h>
+#endif
 
 #if defined(__WATCOMC__)
  #if defined(__PC98__)
@@ -57,6 +60,10 @@
  #define _W                 w
  #define INTR_REGS          union REGPACK
  #define INTR(n,r)          intr((n),(r))
+ #define DOS_ADDR_TO(x)     ((uint8_t FAR*)(x))
+ #define DOS_ADDR_FROM(x)   ((uint32_t)(x))
+ #define DOS_ADDR_INIT()    (1)
+ #define DOS_ADDR_TERM()    ((void)(0))
  #if defined(__WATCOMC__)
   typedef void (_interrupt __far *DOS_VECT_ADR)();
   #define DOS_CLEAR_VECT_ADR(v) ((v) = 0)
@@ -69,8 +76,8 @@
 #elif defined(__FLAT__)   // 32bit DOS
  #define FAR
  #define MK_FAR_PTR(a,b)    (((a) << 4) | (b))
- #define FAR_PTR_SEG(p)     ((uint16_t)((uint64_t)(void FAR*)(p) >> 32))
- #define FAR_PTR_OFF(p)     ((uint32_t)((uint64_t)(p)))
+ #define FAR_PTR_SEG(p)     ((uint16_t)((size_t)(p) >> 4))
+ #define FAR_PTR_OFF(p)     ((uint16_t)((size_t)(p) &  3))
  #define FAR_MALLOC         malloc
  #define FAR_FREE           free
  #define FAR_MEMCPY         memcpy
@@ -96,6 +103,10 @@
   #define DOS_GETVECT(n)     _dos_getvect(n)
   #define DOS_RESETVECT(n,h) _dos_setvect((n),(h))
   #define DOS_SETVECT(n,h)   _dos_setvect((n),(h))
+  #define DOS_ADDR_TO(x)     ((uint8_t*)(x))
+  #define DOS_ADDR_FROM(x)   ((uint32_t)(x))
+  #define DOS_ADDR_INIT()    (1)
+  #define DOS_ADDR_TERM()    ((void)(0))
  #elif defined(__DJGPP__)
   #define __far
   #define DOS_PEEKB(ofs)    _far_peek_b((uint32_t)(ofs))
@@ -115,6 +126,10 @@
   #define _W                x
   #define INTR_REGS         __dpmi_regs
   #define INTR(n,r)         __dpmi_int((n),(r))
+  #define DOS_ADDR_TO(x)    ((uint8_t*)(__djgpp_conventional_base + (x)))
+  #define DOS_ADDR_FROM(x)  ((uint32_t)(x) -  (uint32_t)__djgpp_conventional_base)
+  #define DOS_ADDR_INIT()   (__djgpp_nearptr_enable())
+  #define DOS_ADDR_TERM()   (__djgpp_nearptr_disable())
   #if 0 // sippai chu
   typedef __dpmi_paddr      DOS_VECT_ADR;
   #define DOS_CLEAR_VECT_ADR(vi) ((vi).offset32 = 0, (vi).selector = 0)
