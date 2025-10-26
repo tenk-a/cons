@@ -37,6 +37,9 @@ if(CONS_PLATFORM MATCHES "pc98")
 elseif(CONS_PLATFORM MATCHES "pcat")
   set(CONS_SRCS "${CONS_SRCS}" "${CONS_DIR}/cons_pcat.h" "${CONS_DIR}/cons_pcat.c")
 
+elseif(CONS_PLATFORM MATCHES "dosv")
+  set(CONS_SRCS "${CONS_SRCS}" "${CONS_DIR}/cons_dosv.h" "${CONS_DIR}/cons_dosv.c")
+
 elseif(CONS_PLATFORM MATCHES "mac" OR CONS_PLATFORM MATCHES "linux")
   list(APPEND CONS_LIBS "ncurses")
   set(CONS_SRCS "${CONS_SRCS}" "${CONS_DIR}/cons_curses.h" "${CONS_DIR}/cons_curses.c")

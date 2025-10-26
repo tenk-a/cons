@@ -12,6 +12,8 @@
   #include "cons_pc98.h"
 #elif defined(__PCAT__)
   #include "cons_pcat.h"
+#elif defined(__DOSV__)
+  #include "cons_dosv.h"
 #else
  #include "cons_curses.h"
 #endif

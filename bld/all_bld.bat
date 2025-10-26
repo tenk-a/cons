@@ -100,6 +100,9 @@ call bld.bat watcom-pcat-dos16-l
 call bld.bat watcom-pc98-dos32
 call bld.bat watcom-pc98-dos16-s
 call bld.bat watcom-pc98-dos16-l
+call bld.bat watcom-dosv-dos32
+call bld.bat watcom-dosv-dos16-s
+call bld.bat watcom-dosv-dos16-l
 goto END
 
 :BLD_MSYS64
@@ -115,6 +118,7 @@ goto END
 :BLD_DJGPP
 call setcc.bat djgpp
 call bld.bat djgpp-dos32
+call bld.bat djgpp-dosv-dos32
 goto END
 
 :BLD_DJGPC98

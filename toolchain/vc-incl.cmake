@@ -93,7 +93,7 @@ if(TOOLCHAIN_MSVC_VERSION VERSION_LESS "19.0") # vc2013 and earlier
       set(ADD_OPTS      "${ADD_OPTS} /Dwcstoll=_wcstoi64 /Dwcstoull=_wcstoui6")
     endif()
     if(TOOLCHAIN_MSVC_VERSION VERSION_LESS "17.0") # vc2010 and earlier
-      set(ADD_OPTS "-I${CMAKE_CURRENT_LIST_DIR}/../src/misc/workround/ ${ADD_OPTS}")
+      set(ADD_OPTS "-I${CMAKE_CURRENT_LIST_DIR}/../src/misc/workround/vc/ ${ADD_OPTS}")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Doverride=")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Dfinal=sealed")
     endif()

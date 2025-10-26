@@ -575,6 +575,28 @@ static char const str_digits[][4] = {
     "\x82\x50","\x82\x51","\x82\x52","\x82\x53",    // １２３４ .
     "\x82\x54","\x82\x55","\x82\x56","\x82\x57",    // ５６７８ .
 };
+#elif defined(__DOSV__)     // DOS/V SJIS
+#define SCR_X_SHIFT         1
+#define STR_EMPTY           "  "
+#define STR_CELL_CUR        "\x81\x9f"  // "◆"
+#define STR_CELL            "\x81\xa1"  // "■"
+#define STR_FLAG            "\x81\xa3"  // "▲"
+#define STR_BOMB            "\x81\x9c"  // "●"
+#define STR_WALL_0          "\x84\xAC"  // "┏"
+#define STR_WALL_1          "\x84\xAA"  // "━"
+#define STR_WALL_2          "\x84\xAD"  // "┓"
+#define STR_WALL_3          "\x84\xAB"  // "┃"
+#define STR_WALL_4          "\x84\xAB"  // "┃"
+#define STR_WALL_5          "\x84\xAF"  // "┗"
+#define STR_WALL_6          "\x84\xAA"  // "━"
+#define STR_WALL_7          "\x84\xAE"  // "┛"
+#define STR_TITLE_CUR       ">"         // ">"
+#define TITLE_CUR_W         1
+#define STR_CONG_FRAME      "\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA"  // "━"
+static char const str_digits[][4] = {
+    "\x82\x50","\x82\x51","\x82\x52","\x82\x53",    // １２３４ .
+    "\x82\x54","\x82\x55","\x82\x56","\x82\x57",    // ５６７８ .
+};
 #elif defined(__PCAT__) // CP437  40x24
 #define SCR_X_SHIFT         0
 #define STR_EMPTY           " "

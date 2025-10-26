@@ -601,7 +601,7 @@ static uint8_t gameOver(void) {
 #define STR_WALL                    "|"
 #define FIELD_SCALE_X(x)            (x)
 
-#elif defined(__PC98__)             // PC98 80x25
+#elif defined(__PC98__) || defined(__DOSV__)    // PC98|DOSV 80x25
 
 #define STR_SPC                     "  "
 #define STR_SPCS                    "        "
