@@ -12,6 +12,8 @@
 #define DBG_ONCE_LOG(...)
 
 #else
+#include <stdio.h>
+#include <stdarg.h>
 
 static inline void DbgLog(char const* fmt, ...) {
     FILE* fp = fopen("error.log", "ab+");

@@ -22,6 +22,9 @@
  #include <bios.h>
  #include <i86.h>
  #include <io.h>
+ #include <malloc.h>
+ #include <dos.h>
+ #include <conio.h>
 #elif defined(__DJGPP__)
  #ifndef __FLAT__
   #define __FLAT__
@@ -31,13 +34,14 @@
  #include <sys/nearptr.h>
  #include <sys/movedata.h>
  #include <unistd.h>
+ #include <malloc.h>
+ #include <dos.h>
+ #include <conio.h>
 #else //__IA16__
- #include <i86.h>
+ #include <unistd.h>
+ #include <ia16.h>
 #endif
 
-#include <malloc.h>
-#include <dos.h>
-#include <conio.h>
 
 #if defined(__FLAT__) == 0  // 16bit DOS
  #define FAR                __far

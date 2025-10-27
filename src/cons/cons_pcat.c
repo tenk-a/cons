@@ -13,6 +13,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include <assert.h>
+#include "dbg.h"
 
 cons_clock_t _cons_PRIVATE_clock;
 cons_clock_t _cons_PRIVATE_tick;
@@ -139,7 +140,7 @@ static void setBlinkMode(uint8_t sw) {
 static uint8_t kbHit() {
     union REGS r;
     r.h.ah = 0x0B;
-    intdos(&r, &r);
+    int86(0x21, &r, &r);
     return r.h.al != 0;
 }
 

@@ -198,7 +198,7 @@ static void sys_setBlinkMode(uint8_t sw) {
 static uint8_t sys_kbHit(void) {
     union REGS r;
     r.h.ah = 0x0B;
-    intdos(&r, &r);
+    int86(0x21, &r, &r);
     return r.h.al != 0;
 }
 
