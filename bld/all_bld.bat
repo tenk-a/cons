@@ -132,10 +132,11 @@ call bld.bat borland-win32
 goto END
 
 :BLD_IA16_ELF_EXE
-set "UBUNTU=Ubuntu-22.04"
+set "UBUNTU=Ubuntu-24.04"
 set "WSL_CUR_DIR="
 call :GET_WSL_CUR_DIR %UBUNTU%
 wsl -d %UBUNTU% bash -c "%WSL_CUR_DIR%/bld.sh ia16-pcat-dos16-s"
+wsl -d %UBUNTU% bash -c "%WSL_CUR_DIR%/bld.sh ia16-dosv-dos16-s"
 goto END
 
 :LINUX

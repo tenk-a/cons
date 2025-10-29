@@ -1,4 +1,4 @@
-@echo off
+rem @echo off
 :: usage> bld [toolchain-name] [debug]
 ::  Run
 ::   cmake -G "???" -DCMAKE_TOOLCHAIN_FILE=toolchain/???-toolchain.cmake -B bld/??? .
@@ -95,6 +95,7 @@ set "GENE=NMake Makefiles"
 @if "%VC_VER%"=="141" set "GENE=Visual Studio 15 2017"
 @if "%VC_VER%"=="142" set "GENE=Visual Studio 16 2019"
 @if "%VC_VER%"=="143" set "GENE=Visual Studio 17 2022"
+::@if "%VC_VER%"=="145" set "GENE=Visual Studio 18 2026"
 @if /I "%GENE%"=="NMake Makefiles" goto L_CMAKE
 set "GENE2=%ARCH2%"
 goto L_CMAKE_SKIP2
@@ -109,8 +110,9 @@ goto L_CMAKE_SKIP2
 @if %CMAKE_VER% lss 40000 if "%VC_VER%"=="141" set "GENE=Visual Studio 15 2017%ARCH1%"
 @if "%VC_VER%"=="142" set "GENE=Visual Studio 16 2019"
 @if "%VC_VER%"=="143" set "GENE=Visual Studio 17 2022"
-@if %VC_VER% geq 142  set "GENE2=%ARCH2%"
+::@if "%VC_VER%"=="145" set "GENE=Visual Studio 18 2026"
 @if /I "%GENE%"=="NMake Makefiles" goto L_CMAKE
+@if %VC_VER% geq 142  set "GENE2=%ARCH2%"
 :L_CMAKE_SKIP2
 set OPT1=
 set OPT2=--config Release
@@ -201,6 +203,7 @@ set "Toolchain="
 @if /I not "%PATH:WATCOM=%"=="%PATH%"  set Toolchain=watcom-win32
 @if not "%Toolchain%"=="" goto L_TOOLCHAIN_END
 set "VC_VER="
+@if /I not "%PATH:Microsoft Visual Studio .NET=%"=="%PATH%" set VC_VER=70
 @if /I not "%PATH:Microsoft Visual Studio .NET 2003=%"=="%PATH%" set VC_VER=71
 @if /I not "%PATH:Microsoft Visual Studio 8=%"=="%PATH%"    set VC_VER=80
 @if /I not "%PATH:Microsoft Visual Studio 9.0=%"=="%PATH%"  set VC_VER=90
@@ -211,12 +214,14 @@ set "VC_VER="
 @if /I not "%PATH:Microsoft Visual Studio\2017=%"=="%PATH%" set VC_VER=141
 @if /I not "%PATH:Microsoft Visual Studio\2019=%"=="%PATH%" set VC_VER=142
 @if /I not "%PATH:Microsoft Visual Studio\2022=%"=="%PATH%" set VC_VER=143
+@if /I not "%PATH:Microsoft Visual Studio\18=%"=="%PATH%" set VC_VER=145
 @if "%VC_VER%"=="" goto L_TOOLCHAIN_END
 ::L_VC
 ::if /I "%VC_VER:~0,2%"=="vc" set /a "VC_VER=%VC_VER:~2%"
 set /a VC_VER=%VC_VER%
 set VC_ARCH=
 ::if /I not "%VC_ARCH%"=="" goto L_SKIP_ARCH
+@if "%VC_VER%"=="145"     if /I not "%PATH:\bin\HostX64\x64=%"=="%PATH%" set VC_ARCH=win64
 @if "%VC_VER%"=="143"     if /I not "%PATH:\bin\HostX64\x64=%"=="%PATH%" set VC_ARCH=win64
 @if "%VC_VER%"=="142"     if /I not "%PATH:\bin\HostX64\x64=%"=="%PATH%" set VC_ARCH=win64
 @if "%VC_VER%"=="141"     if /I not "%PATH:\bin\HostX64\x64=%"=="%PATH%" set VC_ARCH=win64
@@ -288,6 +293,9 @@ endlocal & (
   set "MSC_VER=%MSC_VER%"
   set "VC_ARCH=%VC_ARCH%"
 )
+@if %MSC_VER% geq 1200 set VC_VER=60
+@if %MSC_VER% geq 1300 set VC_VER=70
+@if %MSC_VER% geq 1310 set VC_VER=71
 @if %MSC_VER% geq 1400 set VC_VER=80
 @if %MSC_VER% geq 1500 set VC_VER=90
 @if %MSC_VER% geq 1600 set VC_VER=100
@@ -297,7 +305,7 @@ endlocal & (
 @if %MSC_VER% geq 1910 set VC_VER=141
 @if %MSC_VER% geq 1920 set VC_VER=142
 @if %MSC_VER% geq 1930 set VC_VER=143
-@if %MSC_VER% geq 1930 set VC_VER=143
+@if %MSC_VER% geq 1950 set VC_VER=145
 if /I "%ARCH%"=="%VC_ARCH%" goto L_SKIP_VC_VER_2
 set ARCH=%VC_ARCH%
 set Toolchain=%COMPILER%-%ARCH%

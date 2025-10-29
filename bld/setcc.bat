@@ -22,6 +22,8 @@ set LIB=
 if "%setcc_save_path%"=="" set "setcc_save_path=%path%"
 set "setcc_base_path=%setcc_save_path%"
 
+rem set VCPKG_DEFAULT_TRIPLET=x64-windows-static-md
+
 :: Host architecture
 set CcHostArch=x64
 if /I "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
@@ -49,6 +51,8 @@ if /i "%CcArch%"=="win32" set CcArch=x86
 if /i "%CcArch%"=="arm64" set CcArch=arm64
 if /i "%CcArch%"=="arm"   set CcArch=arm
 
+if /i "%CcName%"=="vc145"      goto L_VC145
+if /i "%CcName%"=="vc144"      goto L_VC143
 if /i "%CcName%"=="vc143"      goto L_VC143
 if /i "%CcName%"=="vc142"      goto L_VC142
 if /i "%CcName%"=="vc141"      goto L_VC141
@@ -62,6 +66,8 @@ if /i "%CcName%"=="vc71"       goto L_VC71
 if /i "%CcName%"=="vc70"       goto L_VC70
 if /i "%CcName%"=="vc60"       goto L_VC6
 
+if /i "%CcName%"=="vc14.5"     goto L_VC145
+if /i "%CcName%"=="vc14.4"     goto L_VC143
 if /i "%CcName%"=="vc14.3"     goto L_VC143
 if /i "%CcName%"=="vc14.2"     goto L_VC142
 if /i "%CcName%"=="vc14.1"     goto L_VC141
@@ -110,6 +116,12 @@ if /i "%CcName%"=="djgpc98_mingw" goto L_DJGPP_MINGW
 
 rem ## vc ######################################
 
+:L_VC145
+    set VcVer=vc145
+    set VcYear=18
+    set "VsRoot=%ProgramFiles%\Microsoft Visual Studio\%VcYear%"
+    goto L_VC14x_J2
+
 :L_VC143
     set VcVer=vc143
     set VcYear=2022
@@ -138,6 +150,7 @@ rem ## vc ######################################
     rem if /I "%VcVers_Args:~0,3%"=="x64" set "VcVers_Args=amd64%VcVers_Args:~3%"
     set "PATH=%setcc_base_path%"
     set "VsEdition="
+    if exist "%VsRoot%\Insiders\Common7\Tools\VsMSBuildCmd.bat"     set "VsEdition=Insiders"
     if exist "%VsRoot%\Community\Common7\Tools\VsMSBuildCmd.bat"    set "VsEdition=Community"
     if exist "%VsRoot%\Professional\Common7\Tools\VsMSBuildCmd.bat" set "VsEdition=Professional"
     if exist "%VsRoot%\Enterprise\Common7\Tools\VsMSBuildCmd.bat"   set "VsEdition=Enterprise"

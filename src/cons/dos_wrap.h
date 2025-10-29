@@ -61,19 +61,23 @@
  #define DOS_POKED(ofs,d)   (*(uint32_t volatile __far*)(ofs) = (d))
  #define DOS_MEMPUT(srcptr,bytes,dosadr)    _fmemcpy((void __far*)(dosadr), (srcptr), (bytes))
  #define DOS_MEMGET(dosadr,bytes,dstptr)    _fmemcpy(dstptr, (void __far*)(dosadr), (bytes))
- #define _W                 w
- #define INTR_REGS          union REGPACK
- #define INTR(n,r)          intr((n),(r))
  #define DOS_ADDR_TO(x)     ((uint8_t FAR*)(x))
  #define DOS_ADDR_FROM(x)   ((uint32_t)(x))
  #define DOS_ADDR_INIT()    (1)
  #define DOS_ADDR_TERM()    ((void)(0))
  #if defined(__WATCOMC__)
+  #define _W                 w
+  #define INTR_REGS          union REGPACK
+  #define INTR(n,r)          intr((n),(r))
   typedef void (_interrupt __far *DOS_VECT_ADR)();
   #define DOS_CLEAR_VECT_ADR(v) ((v) = 0)
   #define DOS_GETVECT(n)     _dos_getvect(n)
   #define DOS_RESETVECT(n,h) _dos_setvect((n),(h))
   #define DOS_SETVECT(n,h)   _dos_setvect((n),(h))
+ #elif defined(__ia16__)
+  #define _W                 w
+  #define INTR_REGS          intr_regs_t
+  #define INTR(n,r)          intr((n),(r))
  #endif
  #undef  __loadds
  #define __loadds
