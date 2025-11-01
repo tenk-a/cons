@@ -44,12 +44,12 @@ cmd /c all_bld.bat linux
 
 cmd /c all_bld.bat VCVER-WIN32 142
 cmd /c all_bld.bat VCVER-WIN32 141
-::cmd /c all_bld.bat VCVER-WIN32 140
+cmd /c all_bld.bat VCVER-WIN32 140 make
 
 chcp 932
 cmd /c all_bld.bat VCVER-WIN32 120
 cmd /c all_bld.bat VCVER-WIN32 110
-::cmd /c all_bld.bat VCVER-WIN32 90
+cmd /c all_bld.bat VCVER-WIN32 90
 cmd /c all_bld.bat BORLAND
 
 chcp 65001
@@ -80,12 +80,13 @@ goto END
 
 :BLD_VCVER_WIN32
 set vcver=vc%2
+set opt=%3
 copy ..\toolchain\vc-win32-toolchain.cmake    ..\toolchain\%vcver%-win32-toolchain.cmake
 copy ..\toolchain\vc-win32-md-toolchain.cmake ..\toolchain\%vcver%-win32-md-toolchain.cmake
 call setcc.bat %vcver% win32
-call bld.bat %vcver%-win32
-call bld.bat %vcver%-win32-md
-rem del ..\toolchain\%vcver%-*.cmake
+call bld.bat %vcver%-win32    %opt%
+call bld.bat %vcver%-win32-md %opt%
+del ..\toolchain\%vcver%-*.cmake
 goto END
 
 :BLD_WATCOM

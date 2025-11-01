@@ -22,6 +22,7 @@ set GENE2=
 set COMPILER=
 set ARCH=
 set CRT=
+set USE_MAKE=
 
 if /I "%Toolchain%"=="list"    goto ERR_TOOLCHAIN_LIST
 
@@ -52,6 +53,7 @@ call thirdparty\install_pdcurses.bat %COMPILER% %ARCH% %CRT%
 set OPT1=-DCMAKE_BUILD_TYPE=Release
 set OPT2=
 set debug_bld=
+if /I not "%OPT0%"=="make"  set USE_MAKE=1
 if /I not "%OPT0%"=="debug" goto L_SKIP_DEBUG
 set "OPT0="
 set "OPT1=-DCMAKE_BUILD_TYPE=Debug"
@@ -90,6 +92,7 @@ goto SKIP_ARCH_E
 
 :SKIP_ARCH_E
 set "GENE=NMake Makefiles"
+@if not "%USE_MAKE%"==""  goto L_CMAKE
 @if %CMAKE_VER% lss 40000 goto L_CMAKE3
 @if "%VC_VER%"=="140" set "GENE=Visual Studio 14 2015"
 @if "%VC_VER%"=="141" set "GENE=Visual Studio 15 2017"
