@@ -42,7 +42,7 @@ cons_pos_t              _cons_PRIVATE_screen_height = -1;
 cons_pos_t              _cons_PRIVATE_cur_x;
 cons_pos_t              _cons_PRIVATE_cur_y;
 cons_col_t              _cons_PRIVATE_col;
-unsigned                _cons_PRIVATE_act_cp;
+unsigned                _cons_PRIVATE_active_cp;
 
 static cursor_info_t    s_cursor_info;
 
@@ -639,6 +639,11 @@ static void consRefresh(void) {
     s_refresh_rects_idx = -1;
 }
 
+/// Text VRAM が CP437 か?
+///
+char cons_dosv_vramTypeCP437(void) {
+    return s_tvram_type == TVT_PCAT;
+}
 
 //  -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -   -
 // language code page
@@ -669,12 +674,12 @@ static bool sjis_leadbyte(uint8_t c) {
 static void codepage_init(void) {
     unsigned cp = sys_getActiveCP(NULL);
     if (cp == 932)
-        s_cp_leadbyte   = sjis_leadbyte;
+        s_cp_leadbyte = sjis_leadbyte;
     else if (cp == 936 || cp == 949 || cp == 950)
-        s_cp_leadbyte   = dbc_leadbyte;
+        s_cp_leadbyte = dbc_leadbyte;
     else
-        s_cp_leadbyte   = sbc_leadbyte;
-    _cons_PRIVATE_act_cp= cp;
+        s_cp_leadbyte = sbc_leadbyte;
+    _cons_PRIVATE_active_cp= cp;
     DBG_LOG("CP=%d\n", cp);
 }
 

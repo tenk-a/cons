@@ -112,6 +112,7 @@ void cons_setcolor(cons_col_t co);
 void cons_setRefreshRect(unsigned char n, cons_pos_t x, cons_pos_t y, cons_pos_t w, cons_pos_t h);
 
 #define cons_dosv_activeCP()    (_cons_PRIVATE_active_cp)
+char    cons_dosv_vramTypeCP437(void);
 
 #ifdef __cplusplus
 }

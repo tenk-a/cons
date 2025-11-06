@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <assert.h>
+#include "../cons/dbg.h"
 
 #if __STDC_VERSION__ >= 199901L || __cplusplus >= 201103L
  #include <stdint.h>
@@ -293,6 +294,7 @@ static uint8_t  gameStart(void);
 static uint8_t  gamePlay(void);
 static uint8_t  gameWin(void);
 static uint8_t  gameOver(void);
+static void     draw_init(void);
 static void     draw_game(uint8_t state);
 
 /// ゲーム・メイン処理.
@@ -305,6 +307,7 @@ int gameMain(void) {
         return 1;
 
     rand_init();
+    draw_init();
 
     // ゲームループ.
     do {
@@ -533,13 +536,82 @@ static uint8_t gameOver(void) {
 #define COL_CONG_2          (6 | CONS_COL_LIGHT)
 #define COL_WALL            (5)
 
-#if defined(CONS_USE_UNICODE)
+#if defined(__DOSV__)   //======// DOS/V 自動 ascii,cp437,SJIS
+typedef char const* charp_t;
+typedef struct strtbl_t {
+    uint8_t x_shift,title_cur_w;
+    charp_t empty, cell_cur, cell, flag, bomb, title_cur;
+    charp_t wall_0,wall_1,wall_2,wall_3,wall_4,wall_5,wall_6,wall_7;
+    charp_t cong_frame;
+    char const* dig[8];
+} strtbl_t;
+static strtbl_t const strtbl[3] = {
+    {
+        1, 1,
+        "  ","<>","[]"," F"," *",">",
+        " +","--","+ "," |","| "," +","--","+ ",
+        "------------------------------------",
+        { " 1"," 2"," 3"," 4"," 5"," 6"," 7"," 8" },
+    }, {
+        0, 1,
+        //   ◆     ■,    ▲     ●     >>
+        " ","\x04","\xFE","\x1E","\x0F","\xAF",
+        // ┏   ━     ┓     ┃     ┃     ┗     ━     ┛
+        "\xDA","\xC4","\xBF","\xB3","\xB3","\xC0","\xC4","\xD9",
+        // ―
+        "\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4",
+        { "1","2","3","4","5","6","7","8" },
+    }, {
+        1, 1,
+        //     ◆        ■         ▲          ●        >
+        "  ","\x81\x9f","\x81\xa1","\x81\xa3","\x81\x9c",">",
+        // ┏         ━         ┓       ┃         ┃         ┗         ━         ┛
+        "\x84\xAC","\x84\xAA","\x84\xAD","\x84\xAB","\x84\xAB","\x84\xAF","\x84\xAA","\x84\xAE",
+        // ━
+        "\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA",
+        // １         ２         ３         ４         ５         ６         ７         ８ .
+        { "\x82\x50","\x82\x51","\x82\x52","\x82\x53","\x82\x54","\x82\x55","\x82\x56","\x82\x57" },
+    },
+};
+strtbl_t const* strtbl_cur = &strtbl[0];
+#define SCR_X_SHIFT         (strtbl_cur->x_shift)
+#define TITLE_CUR_W         (strtbl_cur->title_cur_w)
+#define STR_EMPTY           (strtbl_cur->empty)
+#define STR_CELL_CUR        (strtbl_cur->cell_cur)
+#define STR_CELL            (strtbl_cur->cell)
+#define STR_FLAG            (strtbl_cur->flag)
+#define STR_BOMB            (strtbl_cur->bomb)
+#define STR_TITLE_CUR       (strtbl_cur->title_cur)
+#define STR_WALL_0          (strtbl_cur->wall_0)
+#define STR_WALL_1          (strtbl_cur->wall_1)
+#define STR_WALL_2          (strtbl_cur->wall_2)
+#define STR_WALL_3          (strtbl_cur->wall_3)
+#define STR_WALL_4          (strtbl_cur->wall_4)
+#define STR_WALL_5          (strtbl_cur->wall_5)
+#define STR_WALL_6          (strtbl_cur->wall_6)
+#define STR_WALL_7          (strtbl_cur->wall_7)
+#define STR_CONG_FRAME      (strtbl_cur->cong_frame)
+#define str_digits          (strtbl_cur->dig)
+
+static void dosv_init(void) {
+    if (cons_dosv_vramTypeCP437()) {
+        strtbl_cur = &strtbl[1];
+    } else if (cons_dosv_activeCP() == 932) {
+        strtbl_cur = &strtbl[2];
+    } else {
+        strtbl_cur = &strtbl[0];
+    }
+}
+
+#elif defined(CONS_USE_UNICODE)     //======// Win,Linux,Mac
 #define SCR_X_SHIFT         1
+#define TITLE_CUR_W         2
 #define STR_EMPTY           "  "
 #define STR_CELL_CUR        "◆"
 #define STR_CELL            "■"
 #define STR_FLAG            "▲"
 #define STR_BOMB            "●"
+#define STR_TITLE_CUR       "▶"
 #define STR_WALL_0          "┏"
 #define STR_WALL_1          "━━"
 #define STR_WALL_2          "━┓"
@@ -548,18 +620,18 @@ static uint8_t gameOver(void) {
 #define STR_WALL_5          "┗"
 #define STR_WALL_6          "━━"
 #define STR_WALL_7          "━┛"
-#define STR_TITLE_CUR       "▶"
-#define TITLE_CUR_W         2
 #define STR_CONG_FRAME      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 static char const str_digits[][4] = {"①","②","③","④","⑤","⑥","⑦","⑧"};
 
-#elif defined(__PC98__)     // PC98 SJIS
+#elif defined(__PC98__)     //======// PC98 SJIS
 #define SCR_X_SHIFT         1
+#define TITLE_CUR_W         1
 #define STR_EMPTY           "  "
 #define STR_CELL_CUR        "\x81\x9f"  // "◆"
 #define STR_CELL            "\x81\xa1"  // "■"
 #define STR_FLAG            "\x81\xa3"  // "▲"
 #define STR_BOMB            "\x81\x9c"  // "●"
+#define STR_TITLE_CUR       ">"         // ">"
 #define STR_WALL_0          "\x86\xB1"  // "┏"
 #define STR_WALL_1          "\x86\xA3"  // "━"
 #define STR_WALL_2          "\x86\xB5"  // "┓"
@@ -568,20 +640,20 @@ static char const str_digits[][4] = {"①","②","③","④","⑤","⑥","⑦","
 #define STR_WALL_5          "\x86\xB9"  // "┗"
 #define STR_WALL_6          "\x86\xA3"  // "━"
 #define STR_WALL_7          "\x86\xBD"  // "┛"
-#define STR_TITLE_CUR       ">"         // ">"
-#define TITLE_CUR_W         1
 #define STR_CONG_FRAME      "\x86\xA3\x86\xA3\x86\xA3\x86\xA3\x86\xA3\x86\xA3\x86\xA3\x86\xA3\x86\xA3\x86\xA3\x86\xA3\x86\xA3\x86\xA3\x86\xA3\x86\xA3\x86\xA3\x86\xA3\x86\xA3"  // "━"
 static char const str_digits[][4] = {
     "\x82\x50","\x82\x51","\x82\x52","\x82\x53",    // １２３４ .
     "\x82\x54","\x82\x55","\x82\x56","\x82\x57",    // ５６７８ .
 };
-#elif defined(__DOSV__)     // DOS/V SJIS
+#elif 0 //defined(__DOSV__)     //======// DOS/V SJIS
 #define SCR_X_SHIFT         1
+#define TITLE_CUR_W         1
 #define STR_EMPTY           "  "
 #define STR_CELL_CUR        "\x81\x9f"  // "◆"
 #define STR_CELL            "\x81\xa1"  // "■"
 #define STR_FLAG            "\x81\xa3"  // "▲"
 #define STR_BOMB            "\x81\x9c"  // "●"
+#define STR_TITLE_CUR       ">"         // ">"
 #define STR_WALL_0          "\x84\xAC"  // "┏"
 #define STR_WALL_1          "\x84\xAA"  // "━"
 #define STR_WALL_2          "\x84\xAD"  // "┓"
@@ -590,20 +662,20 @@ static char const str_digits[][4] = {
 #define STR_WALL_5          "\x84\xAF"  // "┗"
 #define STR_WALL_6          "\x84\xAA"  // "━"
 #define STR_WALL_7          "\x84\xAE"  // "┛"
-#define STR_TITLE_CUR       ">"         // ">"
-#define TITLE_CUR_W         1
 #define STR_CONG_FRAME      "\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA\x84\xAA"  // "━"
 static char const str_digits[][4] = {
     "\x82\x50","\x82\x51","\x82\x52","\x82\x53",    // １２３４ .
     "\x82\x54","\x82\x55","\x82\x56","\x82\x57",    // ５６７８ .
 };
-#elif defined(__PCAT__) // CP437  40x24
+#elif defined(__PCAT__)     //======// CP437  40x24
 #define SCR_X_SHIFT         0
+#define TITLE_CUR_W         1
 #define STR_EMPTY           " "
 #define STR_CELL_CUR        "\x04"  // "◆"
 #define STR_CELL            "\xFE"  // "■"
 #define STR_FLAG            "\x1E"  // "▲"
 #define STR_BOMB            "\x0F"  // "●"
+#define STR_TITLE_CUR       "\xAF"  // ">>"
 #define STR_WALL_0          "\xDA"  // "┏"
 #define STR_WALL_1          "\xC4"  // "━"
 #define STR_WALL_2          "\xBF"  // "┓"
@@ -612,18 +684,18 @@ static char const str_digits[][4] = {
 #define STR_WALL_5          "\xC0"  // "┗"
 #define STR_WALL_6          "\xC4"  // "━"
 #define STR_WALL_7          "\xD9"  // "┛"
-#define STR_TITLE_CUR       "\xAF"  // ">>"
-#define TITLE_CUR_W         1
 #define STR_CONG_FRAME      "\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4\xC4"
 static char const str_digits[][3] = {"1","2","3","4","5","6","7","8"};
 
-#else   // ASCII    // 80x24
+#else                       //======// ASCII
 #define SCR_X_SHIFT         1
+#define TITLE_CUR_W         1
 #define STR_EMPTY           "  "
 #define STR_CELL_CUR        "<>"
 #define STR_CELL            "[]"
 #define STR_FLAG            " F"
 #define STR_BOMB            " *"
+#define STR_TITLE_CUR       ">"
 #define STR_WALL_0          " +"
 #define STR_WALL_1          "--"
 #define STR_WALL_2          "+ "
@@ -632,8 +704,6 @@ static char const str_digits[][3] = {"1","2","3","4","5","6","7","8"};
 #define STR_WALL_5          " +"
 #define STR_WALL_6          "--"
 #define STR_WALL_7          "+ "
-#define STR_TITLE_CUR       ">"
-#define TITLE_CUR_W         1
 #define STR_CONG_FRAME      "------------------------------------"
 static char const str_digits[][3] = {" 1"," 2"," 3"," 4"," 5"," 6"," 7"," 8"};
 #endif
@@ -789,7 +859,7 @@ static void draw_map(void) {
     }
 }
 
-// カーソル表示.
+/// カーソル表示.
 ///
 void draw_cursor(void) {
     pos_t x = s_draw_map_ofs_x + SCR_X_SCALE(s_cursor_x);
@@ -797,6 +867,14 @@ void draw_cursor(void) {
     cons_xycputs(x, y, COL_CELL_CUR, STR_CELL_CUR);
 }
 
+
+/// 描画初期化.
+///
+static void draw_init(void) {
+ #if defined(__DOSV__)
+    dosv_init();
+ #endif
+}
 
 // -------------------------------------
 // 各ステート描画.
@@ -857,7 +935,7 @@ static void draw_gameWin(void)
     } else {
         static char const msg[]  = "  C O N G R A T U L A T I O N S !   ";
         static char const spcs[] = "                                    ";
-        char*        frame = STR_CONG_FRAME;
+        char const*  frame = STR_CONG_FRAME;
         uint_t       i;
         pos_t        w  = 36;
         pos_t        h  = 6;
