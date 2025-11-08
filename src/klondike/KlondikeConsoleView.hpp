@@ -346,9 +346,9 @@ namespace KlondikeConsole {
             if (this->model().options().debug) {
                 char const* name = cardToName(card, true);
                 if (card.faceUp()) {
-                    snprintf(cardNameBuf2_, sizeof cardNameBuf_, "'%s'", name);
+                    snprintf(cardNameBuf2_, sizeof cardNameBuf2_, "'%s'", name);
                 } else {
-                    snprintf(cardNameBuf2_, sizeof cardNameBuf_, "[%s]", name);
+                    snprintf(cardNameBuf2_, sizeof cardNameBuf2_, "[%s]", name);
                 }
                 return cardNameBuf2_;
             } else {
