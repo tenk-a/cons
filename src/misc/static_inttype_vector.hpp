@@ -330,8 +330,10 @@ template<typename T, unsigned N>
 class static_inttype_vector : public _STATIC_INTTYPE_VECTOR_BASE(T,N)
 {
 private:
-    char                                    buf_[N * sizeof(T)];
-
+    union {
+        char                                 buf_[N * sizeof(T)];
+        typename _priv::sizeof_to_uint<sizeof(T)>::type  align_;
+    };
 public:
     typedef _STATIC_INTTYPE_VECTOR_BASE(T,N) base;
     typedef typename base::value_type        base_value_type;
