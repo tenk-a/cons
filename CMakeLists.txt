@@ -68,8 +68,8 @@ if(NOT CMAKE_TOOLCHAIN_FILE MATCHES "ia16" AND NOT CMAKE_TOOLCHAIN_FILE MATCHES 
 
 add_executable("klondike"
   "${SRC_DIR}/klondike/main.cpp"
-  "${SRC_DIR}/klondike/klondike.cpp"
-  "${SRC_DIR}/klondike/klondike.hpp"
+  "${SRC_DIR}/klondike/Klondike.cpp"
+  "${SRC_DIR}/klondike/Klondike.hpp"
   "${SRC_DIR}/klondike/KlondikeTuiView.cpp"
   "${SRC_DIR}/klondike/KlondikeTuiView.hpp"
   "${SRC_DIR}/cons/ConScr.hpp"
@@ -92,8 +92,8 @@ if(NOT CMAKE_TOOLCHAIN_FILE MATCHES "ia16")
 
 add_executable("klon_cui"
   "${SRC_DIR}/klondike/main.cpp"
-  "${SRC_DIR}/klondike/klondike.cpp"
-  "${SRC_DIR}/klondike/klondike.hpp"
+  "${SRC_DIR}/klondike/Klondike.cpp"
+  "${SRC_DIR}/klondike/Klondike.hpp"
   "${SRC_DIR}/klondike/KlondikeConsoleView.hpp"
   "${SRC_DIR}/misc/static_inttype_vector.hpp"
 
