@@ -1,6 +1,6 @@
 #set(TOOLCHAIN_NAME "watcom-pcat-dos32" CACHE STRING "Toolchain name")
 
-set(CMAKE_SYSTEM_NAME "dos")
+set(CMAKE_SYSTEM_NAME "DOS")
 set(CMAKE_SYSTEM_PROCESSOR "X86")
 set(CMAKE_C_COMPILER "wcl386")
 set(CMAKE_CXX_COMPILER "wcl386")
