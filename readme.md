@@ -62,11 +62,13 @@ Generator と CMAKE_TOOLCHAIN_FILE を指定して cmake を使う。
 ```batch
 :: vc14.3(2022) win64 用.
 cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=toolchain/vc-win64-toolchain.cmake -B bld/vc-win64 .
+cmake --build bld/vc-win64
 cmake --install -B bld/vc-win64
 
-:: Watcom C 16bit dos 用
-cmake -G "Watcom WMake" -DCMAKE_TOOLCHAIN_FILE=toolchain/watcom-dos16-toolchain.cmake -B bld/watcom-dos16 .
-cmake --install -B bld/watcom-dos16
+:: Watcom C 32bit dos 用
+cmake -G "Watcom WMake" -DCMAKE_TOOLCHAIN_FILE=toolchain/watcom-dos32-toolchain.cmake -B bld/watcom-dos32 .
+cmake --build bld/watcom-dos32
+cmake --install -B bld/watcom-dos32
 ```
 
 ただ、コンパイラ(のバージョン)にあわせて Generator 選んだりツールチェイン指定が長かったりなので、
