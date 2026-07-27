@@ -10,16 +10,26 @@
 
 #define CONS_CURSES
 
-// ncurses, pdcurses.
 #define CONS_KEY_NONE           0xffff
 #define CONS_KEY_ERR            0xffff
+#define CONS_KEY_RETURN         0x0a
+#define CONS_KEY_ESC            0x1B
+#define CONS_KEY_SPACE          0x20
+#if defined(CONS_PDCURSESMOD_WIDE)
+#define CONS_KEY_DOWN           0xec02
+#define CONS_KEY_UP             0xec03
+#define CONS_KEY_LEFT           0xec04
+#define CONS_KEY_RIGHT          0xec05
+#define CONS_KEY_HOME           0xec06
+#define CONS_KEY_BACKSPACE      0xec07
+#else
 #define CONS_KEY_DOWN           0x102
 #define CONS_KEY_UP             0x103
 #define CONS_KEY_LEFT           0x104
 #define CONS_KEY_RIGHT          0x105
-#define CONS_KEY_RETURN         0x0a
-#define CONS_KEY_ESC            0x1B
-#define CONS_KEY_SPACE          0x20
+#define CONS_KEY_HOME           0x106
+#define CONS_KEY_BACKSPACE      0x107
+#endif
 
 #define CONS_COL_DEFAULT        0
 #define CONS_COL_BLACK          16
@@ -73,6 +83,8 @@ typedef signed char             cons_pos_t;
 #endif
 typedef unsigned char           cons_col_t;
 typedef unsigned short          cons_key_t;
+
+extern unsigned short const     _cons_PRIVATE_curses_key[8];
 
 int  cons_init(unsigned flags);
 void cons_term(void);

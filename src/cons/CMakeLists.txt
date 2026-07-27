@@ -22,7 +22,6 @@ set(THIRDPARTY_DIR "${CONS_DIR}/../../thirdparty")
 #message(STATUS "THIRDPARTY_DIR=${THIRDPARTY_DIR}")
 #message(STATUS "CMAKE_MSVC_RUNTIME_LIBRARY=${CMAKE_MSVC_RUNTIME_LIBRARY}")
 
-
 set(CONS_SRCS
   "${CONS_DIR}/cons.h"
 )
@@ -41,14 +40,25 @@ elseif(CONS_PLATFORM MATCHES "dosv")
   set(CONS_SRCS "${CONS_SRCS}" "${CONS_DIR}/cons_dosv.h" "${CONS_DIR}/cons_dosv.c")
 
 elseif(CONS_PLATFORM MATCHES "mac" OR CONS_PLATFORM MATCHES "linux")
-  list(APPEND CONS_LIBS "ncurses")
+  set(CONS_LIBS "ncurses")
   set(CONS_SRCS "${CONS_SRCS}" "${CONS_DIR}/cons_curses.h" "${CONS_DIR}/cons_curses.c")
 
 elseif(CONS_PLATFORM MATCHES "win" OR CONS_PLATFORM MATCHES "dos")
+  include(CheckSymbolExists)
+  check_symbol_exists(__PDCURSESMOD__ "${THIRDPARTY_DIR}/PDCursesMod/curses.h" HAVE_PDCURSES_MOD)
   # list(APPEND CONS_OPTS     "-DCONS_USE_PDCURSES")
   list(APPEND CONS_INC_DIRS "${THIRDPARTY_DIR}/include")
   list(APPEND CONS_LIB_DIRS "${THIRDPARTY_DIR}/lib/${CONS_PLATFORM}")
-  list(APPEND CONS_LIBS     "pdcurses")
+  set(CONS_LIBS "pdcurses")
+  if(CONS_PLATFORM MATCHES "dos16")
+    set(TOOLCHAIN_ADD_OPTS "${TOOLCHAIN_ADD_OPTS}" "-DCHTYPE_32")
+  elseif(CONS_PLATFORM MATCHES "win")
+    set(CONS_LIBS ${CONS_LIBS} "winmm")
+    set(TOOLCHAIN_ADD_OPTS "${TOOLCHAIN_ADD_OPTS}" "-DPDC_WIDE" "-DPDC_FORCE_UTF8")
+    if(HAVE_PDCURSES_MOD)
+      set(TOOLCHAIN_ADD_OPTS "${TOOLCHAIN_ADD_OPTS}" "-DCONS_PDCURSESMOD_WIDE")
+    endif()
+  endif()
   set(CONS_SRCS "${CONS_SRCS}" "${CONS_DIR}/cons_curses.h" "${CONS_DIR}/cons_curses.c")
 endif()
 

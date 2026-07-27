@@ -15,9 +15,15 @@
 #if defined(_WIN32)
  #include <windows.h>
  #undef MOUSE_MOVED
+ #define PDC_WIDE         1
+ #define PDC_FORCE_UTF8   1
  #include <curses.h>
  #define CONS_USE_PDCURSES
 #elif defined(__DOS__)
+ #ifndef __FLAT__
+  //#define CHTYPE_16     1
+  #define CHTYPE_32       1
+ #endif
  #include <curses.h>
  #define CONS_USE_PDCURSES
 #else   // mac,linux,unix
@@ -25,6 +31,17 @@
  #include <locale.h>
  #include <ncurses.h>
 #endif
+
+unsigned short const _cons_PRIVATE_curses_key[8] = {
+    KEY_CODE_YES ,  // 0x00
+    KEY_BREAK    ,  // 0x01 + 0x100 -> 0x101  PDCursesMod-WIDE 0x01 + 0xec00 -> 0xec01
+    KEY_DOWN     ,  // 0x02
+    KEY_UP       ,  // 0x03
+    KEY_LEFT     ,  // 0x04
+    KEY_RIGHT    ,  // 0x05
+    KEY_HOME     ,  // 0x06
+    KEY_BACKSPACE,  // 0x07
+};
 
 static cons_pos_t   _cons_screen_width;
 static cons_pos_t   _cons_screen_height;

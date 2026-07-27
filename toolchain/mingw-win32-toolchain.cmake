@@ -6,3 +6,5 @@ add_compile_options(-finput-charset=utf-8 -fexec-charset=utf-8 -fwide-exec-chars
 set(TOOLCHAIN_ADD_SRCS "${CMAKE_CURRENT_LIST_DIR}/../src/win/ActiveCodePageUTF8.rc")
 
 add_compile_options(-DCONS_USE_UNICODE)
+
+#set(TOOLCHAIN_ADD_LIBS "winmm" CACHE STRING "Windows libraries")

@@ -46,6 +46,7 @@ if /I not "%Toolchain:pc98=%"=="%Toolchain%" goto SKIP_PDCURSES
 if /I not "%Toolchain:pcat=%"=="%Toolchain%" goto SKIP_PDCURSES
 if /I not "%Toolchain:dosv=%"=="%Toolchain%" goto SKIP_PDCURSES
 if exist thirdparty\lib\%Toolchain%\*pdcurses.* goto SKIP_PDCURSES
+@if not "%VC_VER%"=="" if %VC_VER% leq 90  set "INCLUDE=%CD%\src\misc\workround\vc;%INCLUDE%"
 call thirdparty\install_pdcurses.bat %COMPILER% %ARCH% %CRT%
 :SKIP_PDCURSES
 
@@ -98,7 +99,7 @@ set "GENE=NMake Makefiles"
 @if "%VC_VER%"=="141" set "GENE=Visual Studio 15 2017"
 @if "%VC_VER%"=="142" set "GENE=Visual Studio 16 2019"
 @if "%VC_VER%"=="143" set "GENE=Visual Studio 17 2022"
-::@if "%VC_VER%"=="145" set "GENE=Visual Studio 18 2026"
+@if "%VC_VER%"=="145" set "GENE=Visual Studio 18 2026"
 @if /I "%GENE%"=="NMake Makefiles" goto L_CMAKE
 set "GENE2=%ARCH2%"
 goto L_CMAKE_SKIP2

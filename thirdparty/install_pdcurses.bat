@@ -1,8 +1,9 @@
 rem @echo off
-:: If necessary, git clone PDCurses,
+:: If necessary, git clone PDCurses|PDCursesMod
 :: build pdcurses according to the compiler name argument,
 :: and copy the files to include and lib/TARGET directory
 :: under the thirdparty directory.
+::  PDCurses PDcursesMod(default)
 ::  COMPILER ARCH     (Generate)
 ::  vc       win64  | vc-win64
 ::  vc       win32  | vc-win32
@@ -14,15 +15,6 @@ rem @echo off
 setlocal
 pushd %~dp0
 
-if exist PDCurses goto SKIP_GITHUB
-git clone https://github.com/wmcbrine/PDCurses
-:SKIP_GITHUB
-pushd PDCurses
-git pull
-popd
-
-call :install_include
-
 set Compiler=
 set Arch=
 set BldTyp=
@@ -32,12 +24,19 @@ set CRT=
 set LibPrefix=
 set MAKE_CC=
 set MAKE_CC_D=
+set MAKE_CFLAGS=
+set MAKE_CFLAGS_D=
 set "MAKE_ARG=WIDE=Y UTF8=Y"
 set "MAKE_ARG_D=%MAKE_ARG% DEBUG=Y"
+::set "PDCurses=PDcurses"
+set "PDCurses=PDCursesMod"
 
 :ARG_LOOP
   if "%1"=="" goto ARG_LOOP_EXIT
   set arg=%1
+
+  if /I "%arg%"=="PDCurses"     set "PDCurses=PDCurses"
+  if /I "%arg%"=="PDCursesMod"  set "PDCurses=PDCursesMod"
 
   if /I "%arg:~0,2%"=="vc"      set "Compiler=%arg%"
   if /I "%arg:~0,6%"=="watcom"  set "Compiler=%arg%"
@@ -45,21 +44,34 @@ set "MAKE_ARG_D=%MAKE_ARG% DEBUG=Y"
   if /I "%arg:~0,5%"=="djgpp"   set "Compiler=%arg%"
   if /I "%arg:~0,7%"=="borland" set "Compiler=%arg%"
 
-  if /I "%1"=="x86"      set Arch=win32
-  if /I "%1"=="win32"    set Arch=win32
-  if /I "%1"=="x64"      set Arch=win64
-  if /I "%1"=="win64"    set Arch=win64
-  if /I "%1"=="arm"      set Arch=arm
-  if /I "%1"=="winarm"   set Arch=winarm
-  if /I "%1"=="arm64"    set Arch=arm64
-  if /I "%1"=="winarm64" set Arch=winarm64
+  if /I "%arg%"=="x86"          set Arch=win32
+  if /I "%arg%"=="win32"        set Arch=win32
+  if /I "%arg%"=="x64"          set Arch=win64
+  if /I "%arg%"=="win64"        set Arch=win64
+  if /I "%arg%"=="arm"          set Arch=arm
+  if /I "%arg%"=="winarm"       set Arch=winarm
+  if /I "%arg%"=="arm64"        set Arch=arm64
+  if /I "%arg%"=="winarm64"     set Arch=winarm64
 
-  if /I "%1"=="md"       set CRT=md
-  ::if /I "%1"=="mt"     set CRT=
+  if /I "%arg%"=="md"           set CRT=md
+  ::if /I "%arg%"=="mt"         set CRT=
 
   shift
 goto ARG_LOOP
 :ARG_LOOP_EXIT
+
+if exist %PDCurses% goto SKIP_GITHUB
+if /I "%PDCurses%"=="PDCursesMod" (
+  git clone https://github.com/Bill-Gray/PDCursesMod.git
+) else (
+  git clone https://github.com/wmcbrine/PDCurses.git
+)
+:SKIP_GITHUB
+pushd %PDCurses%
+git pull
+popd
+
+call :install_include
 
 if "%Compiler%"=="" goto ERR_1
 if /I "%Compiler:~0,2%"=="vc"      goto L_NMAKE
@@ -81,13 +93,16 @@ if /I "%Arch%"=="arm"   set Arch=winarm
 set make=nmake
 set Makefile=Makefile.vc
 set ext=lib
+set "TMP_CFLAGS=-WX- -W4 -D_CRT_SECURE_NO_WARNINGS"
+set MAKE_CFLAGS="CFLAGS=-Ox %TMP_CFLAGS%"
+set MAKE_CFLAGS_D="CFLAGS=-Z7 -DPDCDEBUG %TMP_CFLAGS%"
 if /I "%CRT%"=="md" goto L_NMAKE_VC_MD
 set MAKE_CC="CC=cl -nologo -MT"
 set MAKE_CC_D="CC=cl -nologo -MTd"
 goto L_NMAKE_SKIP_VC
 :L_NMAKE_VC_MD
-set MAKE_CC="CC=cl -nologo -MD"
-set MAKE_CC_D="CC=cl -nologo -MDd"
+set MAKE_CC="CC=cl -nologo -WX- -MD"
+set MAKE_CC_D="CC=cl -nologo -WX- -MDd"
 :L_NMAKE_SKIP_VC
 call :win_compile
 goto END
@@ -103,6 +118,8 @@ set make=make
 set Makefile=Makefile
 set ext=a
 set LibPrefix=lib
+set MAKE_CC="CC=gcc -DNDEBUG" "ON_WINDOWS=1"
+set MAKE_CC_D="PREFIX=" "ON_WINDOWS=1"
 call :win_compile
 goto END
 
@@ -143,7 +160,7 @@ goto END
 :install_include
 set incdir=%CD%\include
 if not exist %incdir% mkdir %incdir%
-copy /b PDCurses\*.h %incdir%\
+copy /b %PDCurses%\*.h %incdir%\
 exit /b 0
 
 :dos32compile
@@ -158,6 +175,7 @@ set LibDir=%Compiler%-dos16-%MDL%
 :L_DOS_COMPILE
 set "WorkDir=dos"
 set "MAKE_ARG=MODEL=%MDL%"
+if /I not "%MDL%"=="f" set "MAKE_ARG=%MAKE_ARG% CHTYPE_32=Y"
 set "MAKE_ARG_D=%MAKE_ARG% DEBUG_=Y"
 goto compile
 
@@ -173,16 +191,16 @@ if not exist %dstdir% mkdir %dstdir%
 set dstdirD=%CD%\lib\debug\%LibDir%
 if not exist %dstdirD% mkdir %dstdirD%
 
-pushd PDCurses\%WorkDir%
-del *.obj *.o *.lib *.a *.pdb *.map *.ilb *.bak *.err
+pushd %PDCurses%\%WorkDir%
+del *.obj *.o *.lib *.a *.pdb *.map *.ilb *.bak *.err >nul
 
-%make% -f %Makefile% %MAKE_ARG% %MAKE_CC%
+%make% -f %Makefile% %MAKE_ARG% %MAKE_CC% %MAKE_CFLAGS%
 copy /b pdcurses.%ext% %dstdir%\%LibPrefix%pdcurses.%ext%
-del *.obj *.o *.lib *.a *.pdb *.map *.ilb *.bak *.err
+del *.obj *.o *.lib *.a *.pdb *.map *.ilb *.bak *.err >nul
 
-%make% -f %Makefile% %MAKE_ARG_D% %MAKE_CC_D%
+%make% -f %Makefile% %MAKE_ARG_D% %MAKE_CC_D% %MAKE_CFLAGS_D%
 copy /b pdcurses.%ext% %dstdirD%\%LibPrefix%pdcurses.%ext%
-del *.obj *.o *.lib *.a *.pdb *.map *.ilb *.bak *.err
+del *.obj *.o *.lib *.a *.pdb *.map *.ilb *.bak *.err >nul
 popd
 exit /b 0
 

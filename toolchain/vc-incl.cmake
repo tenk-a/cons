@@ -36,7 +36,7 @@ set(TOOLCHAIN_TARGET_ARCH  "${CMAKE_MATCH_2}" CACHE STRING "Toolchain Target arc
 #----------------------------------------------------
 # app setting
 
-set(TOOLCHAIN_ADD_LIBS       "kernel32;user32;shell32;advapi32" CACHE STRING "Default Windows libraries")
+set(TOOLCHAIN_ADD_LIBS       "kernel32;user32;shell32;advapi32;Winmm" CACHE STRING "Default Windows libraries")
 #set(TOOLCHAIN_ADD_LINK_OPTS "/SUBSYSTEM:CONSOLE" CACHE STRING "TOOLCHAIN_ADD_LINK_OPTS")
 
 set(ADD_OPTS "")

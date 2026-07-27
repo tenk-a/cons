@@ -42,6 +42,7 @@ rem goto END
 cmd /c all_bld.bat ia16-elf-exe
 cmd /c all_bld.bat linux
 
+cmd /c all_bld.bat VCVER-WIN32 143
 cmd /c all_bld.bat VCVER-WIN32 142
 cmd /c all_bld.bat VCVER-WIN32 141
 cmd /c all_bld.bat VCVER-WIN32 140 make
