@@ -47,7 +47,7 @@ if /I not "%Toolchain:pcat=%"=="%Toolchain%" goto SKIP_PDCURSES
 if /I not "%Toolchain:dosv=%"=="%Toolchain%" goto SKIP_PDCURSES
 if exist thirdparty\lib\%Toolchain%\*pdcurses.* goto SKIP_PDCURSES
 @if not "%VC_VER%"=="" if %VC_VER% leq 90  set "INCLUDE=%CD%\src\misc\workround\vc;%INCLUDE%"
-call thirdparty\install_pdcurses.bat %COMPILER% %ARCH% %CRT%
+call thirdparty\build_pdcurses.bat %COMPILER% %ARCH% %CRT%
 :SKIP_PDCURSES
 
 :: Options
