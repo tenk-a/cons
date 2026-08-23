@@ -4,3 +4,7 @@ set(CMAKE_SYSTEM_NAME "Windows")
 set(CMAKE_SYSTEM_PROCESSOR "X86")
 set(CMAKE_C_COMPILER "bcc32c")
 set(CMAKE_CXX_COMPILER "bcc32c")
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type")
+endif()

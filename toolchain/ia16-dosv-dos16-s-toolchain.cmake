@@ -22,11 +22,13 @@ set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 
 # flags
-set(CMAKE_C_FLAGS   "-fno-stack-protector -static -march=i8086 -mcmodel=small -fomit-frame-pointer ${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "-fno-stack-protector -static -march=i8086 -mcmodel=small -fomit-frame-pointer ${CMAKE_CXX_FLAGS}")
+set(CMAKE_C_FLAGS   "-fno-stack-protector -static -march=i8086 -mcmodel=small -fomit-frame-pointer -ffunction-sections -fdata-sections ${CMAKE_C_FLAGS}")
+set(CMAKE_CXX_FLAGS "-fno-stack-protector -static -march=i8086 -mcmodel=small -fomit-frame-pointer -ffunction-sections -fdata-sections ${CMAKE_CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS "-fnothrow-opt -fdelete-dead-exceptions -fno-rtti -fno-exceptions ${CMAKE_CXX_FLAGS}")
 set(CMAKE_C_FLAGS_RELEASE   "-Os -DNDEBUG" CACHE STRING "CMAKE_C_FLAGS_RELEASE")
 set(CMAKE_CXX_FLAGS_RELEASE "-Os -DNDEBUG" CACHE STRING "CMAKE_CXX_FLAGS_RELEASE")
+set(CMAKE_EXE_LINKER_FLAGS_RELEASE        "-Wl,--gc-sections")
+set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL     "-Wl,--gc-sections")
 
 set(CMAKE_C_FLAGS   "-D__DOS__ -D__DOSV__ ${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "-D__DOS__ -D__DOSV__ ${CMAKE_CXX_FLAGS}")
@@ -49,3 +51,7 @@ endif()
 #
 set(CMAKE_C_FLAGS   "${ADD_OPTS} ${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${ADD_OPTS} ${CMAKE_CXX_FLAGS}")
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type")
+endif()
