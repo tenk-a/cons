@@ -48,6 +48,12 @@ elseif(CONS_PLATFORM MATCHES "win" OR CONS_PLATFORM MATCHES "dos")
   check_symbol_exists(__PDCURSESMOD__ "${THIRDPARTY_DIR}/PDCursesMod/curses.h" HAVE_PDCURSES_MOD)
   # list(APPEND CONS_OPTS     "-DCONS_USE_PDCURSES")
   list(APPEND CONS_INC_DIRS "${THIRDPARTY_DIR}/include")
+  # Debug build uses the debug pdcurses (built by thirdparty/build_pdcurses.bat)
+  # to match the C runtime library.
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug"
+     AND EXISTS "${THIRDPARTY_DIR}/lib/debug/${CONS_PLATFORM}")
+    list(APPEND CONS_LIB_DIRS "${THIRDPARTY_DIR}/lib/debug/${CONS_PLATFORM}")
+  endif()
   list(APPEND CONS_LIB_DIRS "${THIRDPARTY_DIR}/lib/${CONS_PLATFORM}")
   set(CONS_LIBS "pdcurses")
   if(CONS_PLATFORM MATCHES "dos16")
